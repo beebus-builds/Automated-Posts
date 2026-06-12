@@ -1,5 +1,10 @@
 import requests
 import os
+import random
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 
 # Configuration from environment variables
 FOOTBALL_API_KEY = os.environ.get('FOOTBALL_API_KEY')
@@ -7,7 +12,6 @@ FB_PAGE_ACCESS_TOKEN = os.environ.get('FB_PAGE_ACCESS_TOKEN')
 FB_PAGE_ID = os.environ.get('FB_PAGE_ID')
 
 def get_football_data():
-    # Example: Fetching upcoming matches (or whatever data you want)
     url = "https://api.football-data.org/v4/matches"
     headers = {"X-Auth-Token": FOOTBALL_API_KEY}
     response = requests.get(url, headers=headers)
@@ -24,13 +28,44 @@ def post_to_facebook(message):
     response.raise_for_status()
     print("Post successful!")
 
+def get_human_intro():
+    intros = [
+        "Happy match day, football fans! ⚽ Here’s what’s on the menu today:",
+        "Grab your drinks, it's time for some football! Check out today's lineup: 🔥",
+        "Who's excited for today's action? Here are the matches to look out for: 👀",
+        "Football never sleeps! 🌍 Here’s today's schedule:"
+    ]
+    return random.choice(intros)
+
+def get_human_outro():
+    outros = [
+        "\nWho are you supporting today? Let me know below! 👇",
+        "\nAny predictions for these games? Drop them in the comments! 🗣️",
+        "\nWhich match are you most looking forward to? Let's discuss!",
+        "\nLet the games begin! Enjoy the action! 🍿"
+    ]
+    return random.choice(outros)
+
 def main():
     data = get_football_data()
-    # Simple formatting: just post the count of matches as an example
-    # Replace this with real logic
-    count = data.get('count', 0)
-    message = f"Football Update: There are {count} matches scheduled!"
-    post_to_facebook(message)
+    matches = data.get('matches', [])
+    
+    if not matches:
+        message = "No major football matches scheduled for today. Time for a breather! 😅"
+    else:
+        message = f"{get_human_intro()}\n\n"
+        for match in matches[:5]: 
+            comp = match.get('competition', {}).get('name', 'Unknown League')
+            home = match.get('homeTeam', {}).get('name', 'TBD')
+            away = match.get('awayTeam', {}).get('name', 'TBD')
+            time = match.get('utcDate', '').split('T')[1][:5]
+            
+            message += f"🏆 {comp}\n{home} vs {away} at {time} UTC\n\n"
+            
+        message += f"{get_human_outro()}\n\n#FootballUpdates #Soccer #MatchDay"
+        
+    print(f"Drafted message:\n{message}")
+    # post_to_facebook(message) # Uncomment this to enable actual posting
 
 if __name__ == "__main__":
     main()
