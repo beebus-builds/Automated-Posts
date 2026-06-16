@@ -1,7 +1,7 @@
-import os, requests
+import os, sys, requests
 from dotenv import load_dotenv
 load_dotenv()
-from image_generator import lineup_image
+from .image_generator import lineup_image
 
 TOKEN = os.environ.get("FB_PAGE_ACCESS_TOKEN")
 PAGE_ID = os.environ.get("FB_PAGE_ID")

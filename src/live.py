@@ -1,7 +1,7 @@
 import requests, os, json, time
 from datetime import datetime, timezone
 from dotenv import load_dotenv
-from image_generator import (live_image, goal_image, card_image, sub_image,
+from .image_generator import (live_image, goal_image, card_image, sub_image,
     halftime_image, secondhalf_image, fulltime_image, summary_image, schedule_image)
 
 load_dotenv()

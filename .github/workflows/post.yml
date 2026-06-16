@@ -21,7 +21,7 @@ jobs:
         with:
           python-version: '3.9'
       - run: pip install -r requirements.txt
-      - run: python src/live.py
+      - run: python -m src.live
       - run: |
           git config user.name "bot"
           git config user.email "bot@github.com"

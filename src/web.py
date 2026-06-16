@@ -1,7 +1,7 @@
 from flask import Flask, jsonify
 import os
 from dotenv import load_dotenv
-from live import check_and_post, load_state
+from .live import check_and_post, load_state
 
 load_dotenv()
 
