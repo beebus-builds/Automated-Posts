@@ -42,8 +42,7 @@ INTROS = {
 
 def check_and_post():
     state = load_state()
-    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
-    data = api(f"matches?dateFrom={today}&dateTo={today}")
+    data = api("matches")
     matches = data.get("matches", [])
 
     posted = False
