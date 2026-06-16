@@ -163,7 +163,7 @@ def _create_base():
     return img, draw
 
 def _draw_banner(draw, color, label):
-    draw.rounded_rectangle([(0, 0), (1200, 70)], 0, 0, fill=color)
+    draw.rounded_rectangle([(0, 0), (1200, 70)], radius=0, fill=color)
     _cx(draw, label, _f(38, bold=True), 14, 600, "white")
 
 def _draw_team_block(draw, img, home, away, y_base, score_text=None, accent=None):
@@ -202,7 +202,7 @@ def _draw_team_block(draw, img, home, away, y_base, score_text=None, accent=None
     return y_base + 140
 
 def _draw_accent_line(draw, y, color):
-    draw.rounded_rectangle([(200, y), (1000, y + 2)], 1, 1, fill=color)
+    draw.rectangle([(200, y), (1000, y + 2)], fill=color)
 
 EVENT_COLORS = {
     "LIVE": (40, 140, 255), "GOAL": (255, 215, 0), "RED": (220, 40, 40),
@@ -364,7 +364,7 @@ def lineup_image(home, away, home_starters, home_bench, away_starters, away_benc
                 ImageDraw.Draw(mask).ellipse([(0, 0), (32, 32)], fill=255)
                 img.paste(pimg, (lx, y + 3), mask)
                 lx += 40
-            draw.rounded_rectangle([(x_center - 240, y), (x_center + 240, y + 38)], 6, fill=bg_color, outline=color)
+            draw.rounded_rectangle([(x_center - 240, y), (x_center + 240, y + 38)], radius=6, fill=bg_color, outline=color)
             _cx(draw, num_str, _f(18, bold=True), y + 5, x_center - 210, color)
             _cx(draw, pos, _f(16), y + 6, x_center - 160, "gray")
             _cx(draw, name, _f(20), y + 6, x_center + 20, "white")
