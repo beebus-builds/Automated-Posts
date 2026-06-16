@@ -12,7 +12,8 @@ FB_PAGE_ACCESS_TOKEN = os.environ.get('FB_PAGE_ACCESS_TOKEN')
 FB_PAGE_ID = os.environ.get('FB_PAGE_ID')
 
 def get_football_data():
-    url = "https://api.football-data.org/v4/matches"
+    # Only fetch SCHEDULED or LIVE matches for fresh updates
+    url = "https://api.football-data.org/v4/matches?status=SCHEDULED"
     headers = {"X-Auth-Token": FOOTBALL_API_KEY}
     response = requests.get(url, headers=headers)
     response.raise_for_status()
