@@ -1,15 +1,15 @@
-name: Daily Football Post
+name: Football Live Updates
 
 permissions:
   contents: write
 
 on:
   schedule:
-    - cron: '0 9 * * *'
+    - cron: '*/15 * * * *'
   workflow_dispatch:
 
 jobs:
-  post:
+  update:
     runs-on: ubuntu-latest
     env:
       FOOTBALL_API_KEY: ${{ secrets.FOOTBALL_API_KEY }}
@@ -21,4 +21,10 @@ jobs:
         with:
           python-version: '3.9'
       - run: pip install -r requirements.txt
-      - run: python src/post_football_update.py
+      - run: python src/live.py
+      - run: |
+          git config user.name "bot"
+          git config user.email "bot@github.com"
+          git add match_state.json
+          git diff --staged --quiet || git commit -m "Update match state"
+          git push
