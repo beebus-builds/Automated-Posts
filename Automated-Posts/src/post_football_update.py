@@ -65,7 +65,7 @@ def main():
         message += f"{get_human_outro()}\n\n#FootballUpdates #Soccer #MatchDay"
         
     print(f"Drafted message:\n{message}")
-    # post_to_facebook(message) # Uncomment this to enable actual posting
+    post_to_facebook(message)
 
 if __name__ == "__main__":
     main()
