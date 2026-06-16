@@ -24,7 +24,9 @@ def save_posted_matches(ids):
         json.dump(list(ids), f)
 
 def get_football_data():
-    url = "https://api.football-data.org/v4/matches?status=SCHEDULED"
+    from datetime import datetime, timezone
+    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    url = f"https://api.football-data.org/v4/matches?status=SCHEDULED&dateFrom={today}"
     headers = {"X-Auth-Token": FOOTBALL_API_KEY}
     response = requests.get(url, headers=headers)
     response.raise_for_status()
