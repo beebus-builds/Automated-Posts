@@ -4,6 +4,9 @@ import os, requests, io
 FONT_BOLD = None
 FONT_REGULAR = None
 FLAG_CACHE = {}
+PLAYER_CACHE = {}
+BADGE_CACHE = {}
+SPORTSDB_KEY = "123"
 
 COUNTRY_CODES = {
     "france": "fr", "senegal": "sn", "iraq": "iq", "norway": "no",
@@ -83,6 +86,47 @@ def get_flag(team, size=(80, 80)):
             FLAG_CACHE[url] = img
             return img
     except: pass
+    return None
+
+def get_player_img(name, size=(70, 70)):
+    if not name: return None
+    key = name.lower().strip()
+    if key in PLAYER_CACHE: return PLAYER_CACHE[key]
+    try:
+        url = f"https://www.thesportsdb.com/api/v1/json/{SPORTSDB_KEY}/searchplayers.php?p={requests.utils.quote(name)}"
+        r = requests.get(url, timeout=5)
+        if r.status_code == 200:
+            data = r.json().get("player", [])
+            if data:
+                img_url = data[0].get("strThumb") or data[0].get("strCutout")
+                if img_url:
+                    ir = requests.get(img_url, timeout=5)
+                    if ir.status_code == 200:
+                        img = Image.open(io.BytesIO(ir.content)).convert("RGBA").resize(size, Image.LANCZOS)
+                        PLAYER_CACHE[key] = img
+                        return img
+    except: pass
+    PLAYER_CACHE[key] = None
+    return None
+
+def get_team_badge(team, size=(60, 60)):
+    key = team.lower().strip()
+    if key in BADGE_CACHE: return BADGE_CACHE[key]
+    try:
+        url = f"https://www.thesportsdb.com/api/v1/json/{SPORTSDB_KEY}/searchteams.php?t={requests.utils.quote(team)}"
+        r = requests.get(url, timeout=5)
+        if r.status_code == 200:
+            data = r.json().get("teams", [])
+            if data:
+                b_url = data[0].get("strBadge")
+                if b_url:
+                    ir = requests.get(b_url, timeout=5)
+                    if ir.status_code == 200:
+                        img = Image.open(io.BytesIO(ir.content)).convert("RGBA").resize(size, Image.LANCZOS)
+                        BADGE_CACHE[key] = img
+                        return img
+    except: pass
+    BADGE_CACHE[key] = None
     return None
 
 def _init():
@@ -186,30 +230,46 @@ def live_image(home, away, comp, time_str=""):
 def goal_image(home, away, sh, sa, scorer, minute, assist, comp):
     img, draw = _create_base()
     _draw_banner(draw, EVENT_COLORS["GOAL"], "GOAL")
-    _draw_team_block(draw, img, home, away, 140, f"{sh} - {sa}", (255, 215, 0))
+    _draw_team_block(draw, img, home, away, 120, f"{sh} - {sa}", (255, 215, 0))
+    pimg = get_player_img(scorer, (70, 70))
+    cx = 600
+    if pimg:
+        mask = Image.new("L", (70, 70), 0)
+        mask_draw = ImageDraw.Draw(mask)
+        mask_draw.ellipse([(0, 0), (70, 70)], fill=255)
+        img.paste(pimg, (cx - 35, 280), mask)
+    else:
+        draw.ellipse([(cx - 35, 280), (cx + 35, 350)], fill=(255, 215, 0))
+        _cx(draw, scorer[:2].upper(), _f(24, bold=True), 300, cx, (14, 14, 28))
+    _cx(draw, f"{scorer}  {minute}'", _f(32, bold=True), 360, cx, (255, 215, 0))
     _draw_accent_line(draw, 300, EVENT_COLORS["GOAL"])
-    _cx(draw, f"{scorer}  {minute}'", _f(32, bold=True), 315, 600, (255, 215, 0))
     if assist:
-        _cx(draw, f"Assist: {assist}", _f(22), 365, 600, "gray")
+        _cx(draw, f"Assist: {assist}", _f(22), 410, 600, "gray")
     if comp:
-        _cx(draw, comp, _f(20), 450, 600, "gray")
+        _cx(draw, comp, _f(20), 500, 600, "gray")
     path = "post_image.png"; img.save(path); return path
 
 def card_image(team, player, minute, card_type, comp):
     key = "RED" if "RED" in card_type.upper() else "YELLOW"
     img, draw = _create_base()
     _draw_banner(draw, EVENT_COLORS[key], EVENT_LABELS[key])
-    fg = get_flag(team, (80, 80))
     cx = 600
-    if fg:
-        img.paste(fg, (cx - 40, 130), fg)
+    pimg = get_player_img(player, (80, 80))
+    if pimg:
+        mask = Image.new("L", (80, 80), 0)
+        ImageDraw.Draw(mask).ellipse([(0, 0), (80, 80)], fill=255)
+        img.paste(pimg, (cx - 40, 120), mask)
     else:
-        c = _get_color(team)
-        draw.ellipse([(cx - 40, 130), (cx + 40, 210)], fill=c)
-        _cx(draw, team[:3].upper(), _f(26, bold=True), 150, cx, "white")
-    _cx(draw, team.upper(), _f(28, bold=True), 230, cx, "white")
-    _draw_accent_line(draw, 270, EVENT_COLORS[key])
-    _cx(draw, f"{player}  {minute}'", _f(30, bold=True), 285, cx, EVENT_COLORS[key])
+        fg = get_flag(team, (80, 80))
+        if fg:
+            img.paste(fg, (cx - 40, 120), fg)
+        else:
+            c = _get_color(team)
+            draw.ellipse([(cx - 40, 120), (cx + 40, 200)], fill=c)
+            _cx(draw, team[:3].upper(), _f(26, bold=True), 140, cx, "white")
+    _cx(draw, team.upper(), _f(28, bold=True), 220, cx, "white")
+    _draw_accent_line(draw, 260, EVENT_COLORS[key])
+    _cx(draw, f"{player}  {minute}'", _f(30, bold=True), 275, cx, EVENT_COLORS[key])
     if comp:
         _cx(draw, comp, _f(20), 450, 600, "gray")
     path = "post_image.png"; img.save(path); return path
@@ -297,6 +357,13 @@ def lineup_image(home, away, home_starters, home_bench, away_starters, away_benc
             pos = POS_ABBR.get(p.get("position", ""), p.get("position", "")[:2].upper())
             num_str = f"{num}" if num else "-"
             bg_color = (color[0] // 3, color[1] // 3, color[2] // 3)
+            pimg = get_player_img(name, (32, 32))
+            lx = x_center - 230
+            if pimg:
+                mask = Image.new("L", (32, 32), 0)
+                ImageDraw.Draw(mask).ellipse([(0, 0), (32, 32)], fill=255)
+                img.paste(pimg, (lx, y + 3), mask)
+                lx += 40
             draw.rounded_rectangle([(x_center - 240, y), (x_center + 240, y + 38)], 6, fill=bg_color, outline=color)
             _cx(draw, num_str, _f(18, bold=True), y + 5, x_center - 210, color)
             _cx(draw, pos, _f(16), y + 6, x_center - 160, "gray")
