@@ -2,7 +2,7 @@ import requests, os, json, time
 from datetime import datetime, timezone
 from dotenv import load_dotenv
 from image_generator import (live_image, goal_image, card_image, sub_image,
-    halftime_image, secondhalf_image, fulltime_image, summary_image, schedule_image)
+    halftime_image, secondhalf_image, fulltime_image, summary_image, schedule_image, lineup_image)
 
 load_dotenv()
 
@@ -70,6 +70,18 @@ def check_and_post():
             img = live_image(home, away, comp, kickoff)
             post_photo(img, f"The match is underway! {home} vs {away}")
             s["started"] = True; posted = True
+            # Also post lineups if available
+            try:
+                raw2 = api(f"matches/{mid}")
+                detail2 = raw2.get("match", raw2)
+                ht = detail2.get("homeTeam", {})
+                at = detail2.get("awayTeam", {})
+                if ht.get("lineup") or at.get("lineup"):
+                    limg = lineup_image(home, away, ht.get("lineup",[]), ht.get("bench",[]),
+                                        at.get("lineup",[]), at.get("bench",[]), comp)
+                    post_photo(limg, f"Starting XIs: {home} vs {away}")
+            except:
+                pass
 
         if detail is None:
             s["last_status"] = status

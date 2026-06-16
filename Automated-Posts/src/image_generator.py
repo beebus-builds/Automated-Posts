@@ -274,6 +274,54 @@ def summary_image(home, away, sh, sa, events, comp):
         _cx(draw, e, _f(20), y, 600, "lightgray"); y += 28
     path = "post_image.png"; img.save(path); return path
 
+POS_ABBR = {"Goalkeeper": "GK", "Defender": "DF", "Midfielder": "MF", "Attacker": "FW"}
+
+def lineup_image(home, away, home_starters, home_bench, away_starters, away_bench, comp):
+    W, H = 1200, 900
+    _init()
+    img = Image.new("RGB", (W, H), (14, 14, 28))
+    draw = ImageDraw.Draw(img)
+    for i in range(H):
+        alpha = int(30 * (1 - i / H))
+        c = (14 + alpha, 14 + alpha, 28 + alpha * 2)
+        draw.line([(0, i), (W, i)], fill=c)
+    draw.rectangle([(0, 0), (W, 70)], fill=(40, 140, 255))
+    _cx(draw, "STARTING LINEUPS", _f(36, bold=True), 14, 600, "white")
+
+    def draw_squad(players, bench, x_center, team_name, y_start, color):
+        _cx(draw, team_name.upper(), _f(28, bold=True), y_start, x_center, color)
+        y = y_start + 50
+        for p in players[:11]:
+            name = p.get("name", "Unknown")
+            num = p.get("shirtNumber")
+            pos = POS_ABBR.get(p.get("position", ""), p.get("position", "")[:2].upper())
+            num_str = f"{num}" if num else "-"
+            bg_color = (color[0] // 3, color[1] // 3, color[2] // 3)
+            draw.rounded_rectangle([(x_center - 240, y), (x_center + 240, y + 38)], 6, fill=bg_color, outline=color)
+            _cx(draw, num_str, _f(18, bold=True), y + 5, x_center - 210, color)
+            _cx(draw, pos, _f(16), y + 6, x_center - 160, "gray")
+            _cx(draw, name, _f(20), y + 6, x_center + 20, "white")
+            y += 44
+        if bench:
+            y += 10
+            _cx(draw, "SUBS", _f(18, bold=True), y, x_center, "gray")
+            y += 30
+            for p in bench[:5]:
+                name = p.get("name", "")
+                num = p.get("shirtNumber")
+                num_str = f"{num}" if num else "-"
+                _cx(draw, f"{num_str}  {name}", _f(18), y, x_center, "lightgray")
+                y += 28
+
+    home_color = _get_color(home)
+    away_color = _get_color(away)
+    draw_squad(home_starters or [], home_bench or [], 300, home, 90, home_color)
+    draw_squad(away_starters or [], away_bench or [], 900, away, 90, away_color)
+
+    if comp:
+        _cx(draw, comp, _f(20), H - 40, 600, "gray")
+    path = "post_image.png"; img.save(path); return path
+
 def schedule_image(lines, date_str):
     img, draw = _create_base()
     _draw_banner(draw, (40, 140, 255), "MATCH DAY")
