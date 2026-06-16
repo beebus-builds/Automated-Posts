@@ -35,7 +35,8 @@ def post_photo(path, msg):
 
 def check_and_post():
     state = load_state()
-    data = api("matches")
+    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    data = api(f"matches?dateFrom={today}")
     matches = data.get("matches", [])
     posted = False
 
