@@ -122,7 +122,7 @@ def check_and_post():
 if __name__ == "__main__":
     LOOP = os.environ.get("LOOP_MODE", "").lower() == "true"
     if LOOP:
-        print("Live tracker running (checking every 30s)...")
+        print("Live tracker running (checking every 6s)...")
         while True:
             try:
                 if check_and_post():
@@ -131,6 +131,6 @@ if __name__ == "__main__":
                     print("No new events.")
             except Exception as e:
                 print(f"Error: {e}")
-            time.sleep(30)
+            time.sleep(6)
     else:
         check_and_post()
