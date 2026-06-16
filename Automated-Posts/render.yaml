@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: football-poster
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn src.web:app
+    envVars:
+      - key: FOOTBALL_API_KEY
+        sync: false
+      - key: FB_PAGE_ACCESS_TOKEN
+        sync: false
+      - key: FB_PAGE_ID
+        sync: false

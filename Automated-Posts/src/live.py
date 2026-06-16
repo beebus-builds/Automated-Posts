@@ -1,7 +1,6 @@
 import requests, os, json, time
 from datetime import datetime, timezone
 from dotenv import load_dotenv
-from image_//C:\Users\Bibash Poudel\Desktop\Post\Automated-Posts\src\image_generator.py
 from image_generator import (live_image, goal_image, card_image, sub_image,
     halftime_image, secondhalf_image, fulltime_image, summary_image, schedule_image)
 
@@ -140,15 +139,30 @@ def process_matches(state, matches):
         s["last_status"] = status
     return posted
 
+def check_and_post():
+    state = load_state()
+    try:
+        data = api("matches")
+        matches = data.get("matches", [])
+    except Exception as e:
+        print(f"API error: {e}")
+        return False
+    posted = process_matches(state, matches)
+    save_state(state)
+    if posted:
+        print("Events posted successfully.")
+    return posted
+
 if __name__ == "__main__":
     LOOP = os.environ.get("LOOP_MODE", "").lower() == "true"
     if LOOP:
         print("Pro Live Tracker running (checking every 6s)...")
         while True:
             try:
-                if check_and_post(): print("Events posted.")
-                else: pass
-            except Exception as e: print(f"Error: {e}")
+                if check_and_post():
+                    print("Events posted.")
+            except Exception as e:
+                print(f"Error: {e}")
             time.sleep(6)
     else:
         check_and_post()

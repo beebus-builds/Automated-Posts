@@ -33,6 +33,17 @@ COUNTRY_CODES = {
     "burkina faso": "bf", "zambia": "zm", "cape verde": "cv",
 }
 
+EVENT_COLORS = {
+    "LIVE": (40, 140, 255),
+    "GOAL": (255, 215, 0),
+    "YELLOW": (255, 200, 0),
+    "RED": (255, 50, 50),
+    "SUB": (140, 80, 200),
+    "HALFTIME": (255, 165, 0),
+    "FULLTIME": (50, 200, 50),
+    "SUMMARY": (80, 80, 120),
+}
+
 TEAM_COLORS = {
     "france": (20, 50, 180), "senegal": (0, 133, 67), "brazil": (0, 155, 58),
     "argentina": (116, 172, 223), "germany": (0, 0, 0), "italy": (0, 102, 204),
@@ -121,6 +132,14 @@ def get_team_badge(team, size=(100, 100)):
     except: pass
     BADGE_CACHE[t] = None
     return None
+
+def _get_color(team):
+    t = team.lower().strip()
+    if t in TEAM_COLORS:
+        return TEAM_COLORS[t]
+    import hashlib
+    h = hashlib.md5(t.encode()).hexdigest()
+    return (int(h[:2], 16) + 40, int(h[2:4], 16) + 40, int(h[4:6], 16) + 40)
 
 def _draw_pro_base(label, color):
     _init()
@@ -295,3 +314,35 @@ def _draw_match_center(draw, img, home, away, score_text, y_pos, accent=None):
 
 def _draw_accent_line(draw, y, color):
     draw.rounded_rectangle([(200, y), (1000, y + 2)], 1, 1, fill=color)
+
+
+def lineup_image(home, away, home_starters, home_bench, away_starters, away_bench, comp):
+    img, draw = _draw_pro_base("LINEUPS", EVENT_COLORS["LIVE"])
+    _draw_match_center(draw, img, home, away, "LINEUP", 80, EVENT_COLORS["LIVE"])
+
+    y = 240
+    _cx(draw, "STARTING XI", _f(22, bold=True), y, 200, EVENT_COLORS["LIVE"])
+    for p in home_starters[:6]:
+        y += 30
+        name = p.get("name", "")[:18]
+        pos = p.get("position", "")[:4]
+        draw.text((100, y), f"{pos:>4}", fill="gray", font=_f(16))
+        draw.text((160, y), name, fill="white", font=_f(16))
+
+    y = 240
+    _cx(draw, "STARTING XI", _f(22, bold=True), y, 1000, EVENT_COLORS["LIVE"])
+    for p in away_starters[:6]:
+        y += 30
+        name = p.get("name", "")[:18]
+        pos = p.get("position", "")[:4]
+        draw.text((860, y), f"{pos:>4}", fill="gray", font=_f(16))
+        draw.text((920, y), name, fill="white", font=_f(16))
+
+    y = 480
+    if home_bench:
+        _cx(draw, f"Bench: {', '.join(p.get('name','') for p in home_bench[:3])}", _f(18), y, 600, "gray")
+    if comp:
+        _cx(draw, comp, _f(20), 540, 600, "gray")
+    path = "post_image.png"
+    img.save(path)
+    return path
