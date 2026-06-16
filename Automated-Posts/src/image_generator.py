@@ -39,6 +39,10 @@ BANNER = {
     "RED": ((220, 40, 40), "RED CARD"),
     "YELLOW": ((255, 200, 0), "YELLOW CARD"),
     "FULLTIME": ((50, 200, 50), "FULL TIME"),
+    "HALFTIME": ((255, 165, 0), "HALF TIME"),
+    "SUB": ((140, 80, 200), "SUBSTITUTION"),
+    "SECOND_HALF": ((40, 140, 255), "SECOND HALF"),
+    "SUMMARY": ((30, 30, 60), "MATCH SUMMARY"),
 }
 
 def live_image(home, away, comp, time_str=""):
@@ -65,13 +69,48 @@ def card_image(team, player, minute, card_type, comp):
     if comp: _c(draw, comp, _f(22), 540, "gray")
     p = "post_image.png"; img.save(p); return p
 
+def sub_image(team, player_off, player_on, minute, comp):
+    img, draw = _base(*BANNER["SUB"])
+    _c(draw, team, _f(46, bold=True), 150)
+    _c(draw, f"OUT: {player_off}", _f(30), 270, (255, 100, 100))
+    _c(draw, f"IN:  {player_on}", _f(30), 330, (100, 255, 100))
+    _c(draw, f"{minute}'", _f(28), 410, "gray")
+    if comp: _c(draw, comp, _f(22), 540, "gray")
+    p = "post_image.png"; img.save(p); return p
+
+def halftime_image(home, away, sh, sa, scorers_text, comp):
+    img, draw = _base(*BANNER["HALFTIME"])
+    _c(draw, f"{home} {sh} - {sa} {away}", _f(64, bold=True), 150)
+    if scorers_text:
+        _c(draw, scorers_text, _f(26), 300, "lightgray")
+    _c(draw, "Second half coming up!", _f(24), 450, "orange")
+    if comp: _c(draw, comp, _f(22), 540, "gray")
+    p = "post_image.png"; img.save(p); return p
+
+def secondhalf_image(home, away, sh, sa, comp):
+    img, draw = _base(*BANNER["SECOND_HALF"])
+    _c(draw, f"{home} vs {away}", _f(52, bold=True), 170)
+    _c(draw, f"{sh} - {sa}", _f(48, bold=True), 280)
+    if comp: _c(draw, comp, _f(22), 540, "gray")
+    p = "post_image.png"; img.save(p); return p
+
 def fulltime_image(home, away, sh, sa, scorers, comp):
     img, draw = _base(*BANNER["FULLTIME"])
-    _c(draw, f"{home} {sh} - {sa} {away}", _f(64, bold=True), 150)
-    y = 270
+    _c(draw, f"{home} {sh} - {sa} {away}", _f(64, bold=True), 140)
+    _c(draw, "FULL TIME", _f(28), 230, (50, 200, 50))
+    y = 290
     for s in scorers:
-        _c(draw, s, _f(22), y, "lightgray"); y += 32
+        _c(draw, s, _f(22), y, "lightgray"); y += 30
     if comp: _c(draw, comp, _f(22), 540, "gray")
+    p = "post_image.png"; img.save(p); return p
+
+def summary_image(home, away, sh, sa, events, comp):
+    img, draw = _base(*BANNER["SUMMARY"])
+    _c(draw, f"{home} {sh} - {sa} {away}", _f(52, bold=True), 100)
+    _c(draw, "MATCH SUMMARY", _f(24), 180, "gray")
+    y = 230
+    for e in events[:8]:
+        _c(draw, e, _f(20), y, "lightgray"); y += 28
     p = "post_image.png"; img.save(p); return p
 
 def schedule_image(lines, date_str):
