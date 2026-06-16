@@ -1,39 +1,24 @@
-name: Live Match Updates
+name: Daily Football Post
 
 permissions:
   contents: write
 
 on:
   schedule:
-    - cron: '*/15 * * * *'
+    - cron: '0 9 * * *'
   workflow_dispatch:
 
 jobs:
-  live-update:
+  post:
     runs-on: ubuntu-latest
     env:
       FOOTBALL_API_KEY: ${{ secrets.FOOTBALL_API_KEY }}
       FB_PAGE_ACCESS_TOKEN: ${{ secrets.FB_PAGE_ACCESS_TOKEN }}
       FB_PAGE_ID: ${{ secrets.FB_PAGE_ID }}
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
-
-      - name: Set up Python
-        uses: actions/setup-python@v4
+      - uses: actions/checkout@v3
+      - uses: actions/setup-python@v4
         with:
           python-version: '3.9'
-
-      - name: Install dependencies
-        run: pip install -r requirements.txt
-
-      - name: Run live updater
-        run: python src/post_football_update.py
-
-      - name: Commit state file
-        run: |
-          git config user.name "football-bot"
-          git config user.email "football-bot@github.com"
-          git add match_state.json
-          git diff --staged --quiet || git commit -m "Update match state"
-          git push
+      - run: pip install -r requirements.txt
+      - run: python src/post_football_update.py
