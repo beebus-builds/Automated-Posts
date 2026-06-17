@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#1a1a30">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<link rel="manifest" href="/manifest.json">
+<link rel="icon" href="/static/icons/icon-192.png" sizes="192x192">
+<link rel="apple-touch-icon" href="/static/icons/icon-192.png">
+<title>Match Poster</title>
+<link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+<div class="app" id="app">
+  <div class="header">
+    <h1>Match <span>Poster</span></h1>
+    <p>Post football updates to Facebook instantly</p>
+  </div>
+  <div class="status-bar"><span class="dot"></span> Ready to post</div>
+
+  <div class="card">
+    <div class="card-title">Event Type</div>
+    <div class="event-grid" id="eventGrid">
+      <button class="event-btn" data-event="live"><span class="icon">▶</span> Live</button>
+      <button class="event-btn" data-event="goal"><span class="icon">⚽</span> Goal</button>
+      <button class="event-btn" data-event="card"><span class="icon">🟨</span> Card</button>
+      <button class="event-btn" data-event="sub"><span class="icon">🔄</span> Sub</button>
+      <button class="event-btn" data-event="halftime"><span class="icon">⏸</span> Half</button>
+      <button class="event-btn" data-event="fulltime"><span class="icon">🏁</span> Full</button>
+      <button class="event-btn" data-event="summary"><span class="icon">📊</span> Summary</button>
+      <button class="event-btn" data-event="schedule"><span class="icon">📅</span> Schedule</button>
+    </div>
+  </div>
+
+  <form id="postForm">
+    <div class="card">
+      <div class="card-title">Match Details</div>
+      <div id="teamsSection">
+        <div class="field-row">
+          <div class="field"><label>Home Team</label><input name="home" id="home" placeholder="e.g. Portugal" autocomplete="off"></div>
+          <div class="field"><label>Away Team</label><input name="away" id="away" placeholder="e.g. Congo DR" autocomplete="off"></div>
+        </div>
+        <div class="field"><label>Competition</label><input name="comp" id="comp" placeholder="e.g. FIFA World Cup 2026" autocomplete="off"></div>
+      </div>
+
+      <div id="fields-container">
+        <div id="fields-live" class="event-fields">
+          <div class="field"><label>Kickoff Time</label><input name="time" placeholder="e.g. 17:00 UTC"></div>
+        </div>
+        <div id="fields-goal" class="event-fields hidden">
+          <div class="field-row">
+            <div class="field"><label>Home Score</label><input name="sh" type="number" min="0" value="0"></div>
+            <div class="field"><label>Away Score</label><input name="sa" type="number" min="0" value="0"></div>
+          </div>
+          <div class="field"><label>Scorer Name</label><input name="scorer" placeholder="e.g. Cristiano Ronaldo"></div>
+          <div class="field-row">
+            <div class="field"><label>Minute</label><input name="minute" placeholder="e.g. 23"></div>
+            <div class="field"><label>Side</label><select name="team_side"><option value="home">Home</option><option value="away">Away</option></select></div>
+          </div>
+          <div class="field"><label>Assist (optional)</label><input name="assist" placeholder="e.g. Bruno Fernandes"></div>
+        </div>
+        <div id="fields-card" class="event-fields hidden">
+          <div class="field"><label>Team</label><input name="team" placeholder="e.g. Portugal"></div>
+          <div class="field"><label>Player Name</label><input name="player" placeholder="e.g. Pepe"></div>
+          <div class="field-row">
+            <div class="field"><label>Minute</label><input name="minute" placeholder="e.g. 67"></div>
+            <div class="field"><label>Type</label><select name="card_type"><option value="YELLOW">Yellow</option><option value="RED">Red</option></select></div>
+          </div>
+        </div>
+        <div id="fields-sub" class="event-fields hidden">
+          <div class="field"><label>Team</label><input name="team" placeholder="e.g. Portugal"></div>
+          <div class="field"><label>Player Off</label><input name="off" placeholder="e.g. Joao Felix"></div>
+          <div class="field"><label>Player On</label><input name="on" placeholder="e.g. Diogo Jota"></div>
+          <div class="field"><label>Minute</label><input name="minute" placeholder="e.g. 72"></div>
+        </div>
+        <div id="fields-halftime" class="event-fields hidden">
+          <div class="field-row">
+            <div class="field"><label>Home Score</label><input name="sh" type="number" min="0" value="0"></div>
+            <div class="field"><label>Away Score</label><input name="sa" type="number" min="0" value="0"></div>
+          </div>
+          <div class="field"><label>Scorers</label><input name="scorers" placeholder="e.g. Ronaldo 23', Messi 45+2'"></div>
+        </div>
+        <div id="fields-secondhalf" class="event-fields hidden">
+          <div class="field-row">
+            <div class="field"><label>Home Score</label><input name="sh" type="number" min="0" value="0"></div>
+            <div class="field"><label>Away Score</label><input name="sa" type="number" min="0" value="0"></div>
+          </div>
+        </div>
+        <div id="fields-fulltime" class="event-fields hidden">
+          <div class="field-row">
+            <div class="field"><label>Home Score</label><input name="sh" type="number" min="0" value="0"></div>
+            <div class="field"><label>Away Score</label><input name="sa" type="number" min="0" value="0"></div>
+          </div>
+          <div class="field"><label>Scorers (comma separated)</label><input name="scorers" placeholder="e.g. Ronaldo 23', Leao 67'"></div>
+        </div>
+        <div id="fields-summary" class="event-fields hidden">
+          <div class="field-row">
+            <div class="field"><label>Home Score</label><input name="sh" type="number" min="0" value="0"></div>
+            <div class="field"><label>Away Score</label><input name="sa" type="number" min="0" value="0"></div>
+          </div>
+          <div class="field"><label>Events (comma separated)</label>
+          <textarea name="events" rows="3" placeholder="Goal: Ronaldo 23', Yellow card: Pepe 67'"></textarea></div>
+        </div>
+        <div id="fields-schedule" class="event-fields hidden">
+          <div class="field"><label>Date</label><input name="date" placeholder="e.g. June 17, 2026"></div>
+          <div class="field"><label>Matches (comma separated)</label>
+          <textarea name="lines" rows="3" placeholder="Portugal vs Congo DR, England vs Croatia"></textarea></div>
+        </div>
+      </div>
+
+      <div class="video-toggle">
+        <span>🎥</span>
+        <label class="switch"><input type="checkbox" name="video" id="videoToggle"><span class="slider"></span></label>
+        <label>Also post as video reel</label>
+      </div>
+
+      <button type="submit" class="btn" id="submitBtn">
+        <span class="spinner hidden" id="spinner"></span>
+        <span id="btnText">Post to Facebook</span>
+      </button>
+      <div id="result"></div>
+    </div>
+  </form>
+
+  <div class="card">
+    <div class="card-title" style="display:flex;justify-content:space-between;align-items:center;">
+      <span>Post History</span>
+      <button onclick="loadHistory()" style="background:none;border:none;color:var(--accent);cursor:pointer;font-size:13px;">Refresh</button>
+    </div>
+    <div id="historyList"><div class="empty-state"><div class="big">📭</div>No posts yet</div></div>
+  </div>
+</div>
+
+<script>
+let currentEvent = "live";
+
+document.querySelectorAll(".event-btn").forEach(btn => {
+  btn.addEventListener("click", () => {
+    document.querySelectorAll(".event-btn").forEach(b => b.classList.remove("active"));
+    btn.classList.add("active");
+    currentEvent = btn.dataset.event;
+    document.getElementById("postForm").querySelector('[name="event"]')?.remove();
+    const input = document.createElement("input");
+    input.type = "hidden"; input.name = "event"; input.value = currentEvent;
+    document.getElementById("postForm").appendChild(input);
+    showFields(currentEvent);
+  });
+});
+
+function showFields(event) {
+  document.querySelectorAll(".event-fields").forEach(el => el.classList.add("hidden"));
+  const target = document.getElementById("fields-" + event);
+  if (target) target.classList.remove("hidden");
+}
+
+document.getElementById("postForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const btn = document.getElementById("submitBtn");
+  const spinner = document.getElementById("spinner");
+  const btnText = document.getElementById("btnText");
+  const result = document.getElementById("result");
+
+  btn.disabled = true;
+  spinner.classList.remove("hidden");
+  btnText.textContent = "Posting...";
+  result.className = "";
+  result.style.display = "none";
+
+  const formData = new FormData(e.target);
+  const data = {};
+  formData.forEach((v, k) => data[k] = v);
+
+  try {
+    const res = await fetch("/api/post", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    });
+    const json = await res.json();
+
+    if (json.success) {
+      let html = '<strong style="color:var(--success);font-size:16px;">Posted!</strong>';
+      html += '<div class="caption-text">' + json.caption + '</div>';
+      if (json.fb_url) html += '<a class="fb-link" href="' + json.fb_url + '" target="_blank">View on Facebook</a>';
+      if (json.video_posted) html += '<div style="color:var(--warning);font-size:12px;margin-top:6px;">Video reel also posted</div>';
+      result.className = "success";
+      result.innerHTML = html;
+      loadHistory();
+      e.target.reset();
+      showFields(currentEvent);
+    } else {
+      result.className = "error";
+      result.innerHTML = '<strong>Error:</strong> ' + (json.error || "Unknown error");
+    }
+  } catch (err) {
+    result.className = "error";
+    result.innerHTML = "<strong>Network error:</strong> " + err.message;
+  }
+
+  btn.disabled = false;
+  spinner.classList.add("hidden");
+  btnText.textContent = "Post to Facebook";
+});
+
+async function loadHistory() {
+  try {
+    const res = await fetch("/api/history");
+    const hist = await res.json();
+    const el = document.getElementById("historyList");
+    if (!hist.length) {
+      el.innerHTML = '<div class="empty-state"><div class="big">📭</div>No posts yet</div>';
+      return;
+    }
+    el.innerHTML = hist.slice(0, 20).map(h => {
+      const ok = h.result && !h.result.error;
+      const time = new Date(h.timestamp).toLocaleTimeString();
+      const date = new Date(h.timestamp).toLocaleDateString();
+      return '<div class="history-item">' +
+        '<div class="h-time">' + date + ' ' + time + '</div>' +
+        '<div class="h-event">' + h.event.toUpperCase() + '</div>' +
+        '<div class="h-caption">' + (h.caption || "").substring(0, 80) + '</div>' +
+        '<div class="h-status ' + (ok ? "ok" : "fail") + '">' + (ok ? "Posted" : "Failed") + '</div>' +
+        '</div>';
+    }).join("");
+  } catch (e) {
+    document.getElementById("historyList").innerHTML = '<div class="empty-state">Failed to load history</div>';
+  }
+}
+
+// Init: set default event
+document.querySelector('.event-btn[data-event="live"]').click();
+loadHistory();
+</script>
+</body>
+</html>
