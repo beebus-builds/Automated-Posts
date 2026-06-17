@@ -8,6 +8,17 @@ PLAYER_CACHE = {}
 BADGE_CACHE = {}
 SPORTSDB_KEY = "123"
 
+EVENT_COLORS = {
+    "LIVE": (40, 140, 255),
+    "GOAL": (255, 215, 0),
+    "YELLOW": (255, 200, 0),
+    "RED": (255, 50, 50),
+    "SUB": (140, 80, 200),
+    "HALFTIME": (255, 165, 0),
+    "FULLTIME": (50, 200, 50),
+    "SUMMARY": (80, 80, 120),
+}
+
 COUNTRY_CODES = {
     "france": "fr", "senegal": "sn", "iraq": "iq", "norway": "no",
     "iran": "ir", "new zealand": "nz", "argentina": "ar", "algeria": "dz",
@@ -28,20 +39,9 @@ COUNTRY_CODES = {
     "ireland": "ie", "iceland": "is", "slovakia": "sk", "slovenia": "si",
     "montenegro": "me", "albania": "al", "north macedonia": "mk",
     "finland": "fi", "luxembourg": "lu", "cyprus": "cy", "israel": "il",
-    "bulgaria": "bg", "latvia": "lv", "estonia": "ee", "lithuania": "lt",
+    "buggaria": "bg", "latvia": "lv", "estonia": "ee", "lithuania": "lt",
     "moldova": "md", "bosnia": "ba", "ivory coast": "ci", "mali": "ml",
     "burkina faso": "bf", "zambia": "zm", "cape verde": "cv",
-}
-
-EVENT_COLORS = {
-    "LIVE": (40, 140, 255),
-    "GOAL": (255, 215, 0),
-    "YELLOW": (255, 200, 0),
-    "RED": (255, 50, 50),
-    "SUB": (140, 80, 200),
-    "HALFTIME": (255, 165, 0),
-    "FULLTIME": (50, 200, 50),
-    "SUMMARY": (80, 80, 120),
 }
 
 TEAM_COLORS = {
@@ -74,7 +74,14 @@ def _cx(draw, text, font, y, cx, fill="white"):
     w = b[2] - b[0]
     draw.text((cx - w // 2, y), text, fill=fill, font=font)
 
-def get_flag(team, size=(100, 100)):
+def _get_color(team):
+    t = team.lower().strip()
+    if t in TEAM_COLORS: return TEAM_COLORS[t]
+    import hashlib
+    h = hashlib.md5(t.encode()).hexdigest()
+    return (int(h[:2], 16) + 40, int(h[2:4], 16) + 40, int(h[4:6], 16) + 40)
+
+def get_flag(team, size=(120, 120)):
     t = team.lower().strip()
     code = COUNTRY_CODES.get(t)
     if not code:
@@ -92,7 +99,7 @@ def get_flag(team, size=(100, 100)):
     except: pass
     return None
 
-def get_player_img(name, size=(120, 120)):
+def get_player_img(name, size=(180, 180)):
     if not name: return None
     key = name.lower().strip()
     if key in PLAYER_CACHE: return PLAYER_CACHE[key]
@@ -113,7 +120,7 @@ def get_player_img(name, size=(120, 120)):
     PLAYER_CACHE[key] = None
     return None
 
-def get_team_badge(team, size=(100, 100)):
+def get_team_badge(team, size=(150, 150)):
     t = team.lower().strip()
     if t in BADGE_CACHE: return BADGE_CACHE[t]
     try:
@@ -133,216 +140,356 @@ def get_team_badge(team, size=(100, 100)):
     BADGE_CACHE[t] = None
     return None
 
-def _get_color(team):
-    t = team.lower().strip()
-    if t in TEAM_COLORS:
-        return TEAM_COLORS[t]
-    import hashlib
-    h = hashlib.md5(t.encode()).hexdigest()
-    return (int(h[:2], 16) + 40, int(h[2:4], 16) + 40, int(h[4:6], 16) + 40)
-
 def _draw_pro_base(label, color):
     _init()
-    W, H = 1200, 630
-    img = Image.new("RGB", (W, H), (10, 10, 20))
+    W, H = 1200, 1200
+    img = Image.new("RGB", (W, H), (10, 10, 16))
     draw = ImageDraw.Draw(img)
     
     # Background gradient
     for i in range(H):
-        alpha = int(50 * (1 - i/H))
-        c = (10+alpha, 10+alpha, 20+alpha*2)
+        alpha = int(45 * (1 - i/H))
+        c = (8+alpha, 8+alpha, 14+alpha)
         draw.line([(0, i), (W, i)], fill=c)
+        
+    # Modern cyber/tech grid lines (diagonal accents)
+    for x in range(0, W, 100):
+        draw.line([(x, 0), (x - 300, H)], fill=(22, 22, 38), width=2)
     
-    # Accent Top Bar
-    draw.rectangle([(0, 0), (W, 70)], fill=color)
-    _cx(draw, label.upper(), _f(40, bold=True), 15, 600, "white")
+    # Neon top bar
+    draw.rectangle([(0, 0), (W, 100)], fill=(12, 12, 20))
+    draw.line([(0, 100), (W, 100)], fill=color, width=4)
     
-    # Side Glows
-    draw.ellipse([( -100, -100), (300, 300)], fill=(30, 30, 60))
-    draw.ellipse([(900, -100), (1300, 300)], fill=(30, 30, 60))
+    # Glows
+    glow = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+    gd = ImageDraw.Draw(glow)
+    gd.ellipse([( -200, -200), (400, 400)], fill=(color[0], color[1], color[2], 35))
+    gd.ellipse([(800, -200), (1400, 400)], fill=(color[0], color[1], color[2], 35))
+    gd.ellipse([(400, 400), (800, 800)], fill=(color[0], color[1], color[2], 25))
+    img = Image.alpha_composite(img.convert("RGBA"), glow).convert("RGB")
+    draw = ImageDraw.Draw(img)
+    
+    # Header Label Text
+    _cx(draw, label.upper(), _f(52, bold=True), 22, 600, "white")
     
     return img, draw
 
+def _draw_match_center(draw, img, home, away, score_text, y_pos, accent=None):
+    W = 1200
+    # Center backdrop panel
+    draw.rounded_rectangle([(80, y_pos - 40), (1120, y_pos + 320)], 24, fill=(18, 18, 32), outline=(255, 255, 255, 20), width=2)
+    
+    # Team badges
+    bh = get_team_badge(home, (160, 160)) or get_flag(home, (160, 100))
+    ba = get_team_badge(away, (160, 160)) or get_flag(away, (160, 100))
+    
+    # Paste badges
+    mask_circle = Image.new("L", (160, 160), 0)
+    ImageDraw.Draw(mask_circle).ellipse([(0, 0), (160, 160)], fill=255)
+    
+    if bh:
+        img.paste(bh.resize((160, 160)), (280 - 80, y_pos + 20), mask_circle if bh.mode == "RGBA" else None)
+    else:
+        c = _get_color(home)
+        draw.ellipse([(280 - 80, y_pos + 20), (280 + 80, y_pos + 180)], fill=c)
+        _cx(draw, home[:3].upper(), _f(44, bold=True), y_pos + 70, 280, "white")
+        
+    if ba:
+        img.paste(ba.resize((160, 160)), (920 - 80, y_pos + 20), mask_circle if ba.mode == "RGBA" else None)
+    else:
+        c = _get_color(away)
+        draw.ellipse([(920 - 80, y_pos + 20), (920 + 80, y_pos + 180)], fill=c)
+        _cx(draw, away[:3].upper(), _f(44, bold=True), y_pos + 70, 920, "white")
+        
+    # Names below badges
+    _cx(draw, home.upper(), _f(34, bold=True), y_pos + 210, 280, "white")
+    _cx(draw, away.upper(), _f(34, bold=True), y_pos + 210, 920, "white")
+    
+    # Score or VS text
+    if score_text:
+        _cx(draw, score_text, _f(96, bold=True), y_pos + 45, 600, accent or "white")
+
+def _draw_accent_line(draw, y, color):
+    draw.rounded_rectangle([(200, y), (1000, y + 3)], radius=2, fill=color)
+
 def live_image(home, away, comp, time_str=""):
-    img, draw = _draw_pro_base("LIVE", (40, 140, 255))
-    _draw_match_center(draw, img, home, away, "vs", 180, (40, 140, 255))
+    img, draw = _draw_pro_base("LIVE", EVENT_COLORS["LIVE"])
+    _draw_match_center(draw, img, home, away, "VS", 220, EVENT_COLORS["LIVE"])
+    
+    # Descriptive bottom section
+    draw.rounded_rectangle([(300, 640), (900, 740)], 20, fill=(24, 24, 40), outline=EVENT_COLORS["LIVE"], width=2)
+    _cx(draw, "MATCH DAY IN PROGRESS", _f(28, bold=True), 655, 600, EVENT_COLORS["LIVE"])
     if time_str:
-        _cx(draw, f"Kickoff: {time_str} UTC", _f(24), 380, 600, "lightblue")
+        _cx(draw, f"Kickoff Time: {time_str} UTC", _f(24), 695, 600, "lightblue")
+        
     if comp:
-        draw.rounded_rectangle([(400, 460), (800, 500)], 10, fill=(40, 140, 255))
-        _cx(draw, comp.upper(), _f(20, bold=True), 468, 600, "white")
-    path = "post_image.png"; img.save(path); return path
+        draw.rounded_rectangle([(200, 840), (1000, 920)], 15, fill=(35, 35, 55))
+        _cx(draw, comp.upper(), _f(26, bold=True), 862, 600, "white")
+        
+    path = "post_image.png"
+    img.save(path)
+    return path
 
 def goal_image(home, away, sh, sa, scorer, minute, assist, comp):
-    img, draw = _draw_pro_base("GOAL", (255, 215, 0))
-    _draw_match_center(draw, img, home, away, f"{sh} - {sa}", 160, (255, 215, 0))
+    img, draw = _draw_pro_base("GOAL", EVENT_COLORS["GOAL"])
+    _draw_match_center(draw, img, home, away, f"{sh} - {sa}", 180, EVENT_COLORS["GOAL"])
     
-    pimg = get_player_img(scorer, (150, 150))
     cx = 600
-    if pimg:
-        mask = Image.new("L", (150, 150), 0)
-        ImageDraw.Draw(mask).ellipse([(0, 0), (150, 150)], fill=255)
-        img.paste(pimg, (cx - 75, 280), mask)
-    else:
-        draw.ellipse([(cx - 75, 280), (cx + 75, 400)], fill=(255, 215, 0))
-        _cx(draw, scorer[:2].upper(), _f(40, bold=True), 310, cx, (14, 14, 28))
+    y_player = 600
     
-    _cx(draw, f"{scorer}  {minute}'", _f(36, bold=True), 440, cx, (255, 215, 0))
+    # Substantial descriptive card panel for scorer
+    draw.rounded_rectangle([(250, y_player - 40), (950, y_player + 340)], 24, fill=(18, 18, 32), outline=EVENT_COLORS["GOAL"], width=2)
+    
+    pimg = get_player_img(scorer, (200, 200))
+    if pimg:
+        mask = Image.new("L", (200, 200), 0)
+        ImageDraw.Draw(mask).ellipse([(0, 0), (200, 200)], fill=255)
+        # Glowing border around photo
+        draw.ellipse([(cx - 105, y_player - 5), (cx + 105, y_player + 205)], outline=EVENT_COLORS["GOAL"], width=4)
+        img.paste(pimg, (cx - 100, y_player), mask)
+    else:
+        draw.ellipse([(cx - 100, y_player), (cx + 100, y_player + 200)], fill=EVENT_COLORS["GOAL"])
+        _cx(draw, scorer[:2].upper(), _f(64, bold=True), y_player + 50, cx, (14, 14, 28))
+        
+    _cx(draw, f"{scorer.upper()}", _f(48, bold=True), y_player + 220, cx, EVENT_COLORS["GOAL"])
+    _cx(draw, f"MINUTE: {minute}'", _f(30, bold=True), y_player + 285, cx, "white")
+    
     if assist:
-        _cx(draw, f"Assist: {assist}", _f(22), 480, cx, "lightgray")
+        _cx(draw, f"ASSIST BY: {assist.upper()}", _f(24), y_player + 345, cx, "lightgray")
+        
     if comp:
-        _cx(draw, comp, _f(20), 540, 600, "gray")
-    path = "post_image.png"; img.save(path); return path
+        _cx(draw, comp.upper(), _f(24, bold=True), 1080, 600, "gray")
+        
+    path = "post_image.png"
+    img.save(path)
+    return path
 
 def card_image(team, player, minute, card_type, comp):
     key = "RED" if "RED" in card_type.upper() else "YELLOW"
-    img, draw = _draw_pro_base(key, EVENT_COLORS[key])
+    color = EVENT_COLORS[key]
+    img, draw = _draw_pro_base(key, color)
     
-    pimg = get_player_img(player, (150, 150))
+    # Top info text
+    _cx(draw, f"BOOKING RECEIVED IN {minute}'", _f(28, bold=True), 160, 600, color)
+    
     cx = 600
+    y_pos = 280
+    
+    # Outer glassy container
+    draw.rounded_rectangle([(200, y_pos), (1000, y_pos + 620)], 24, fill=(18, 18, 32), outline=(255, 255, 255, 15), width=2)
+    
+    # Draw actual card graphic
+    card_w, card_h = 140, 200
+    draw.rounded_rectangle([(cx - card_w//2, y_pos + 60), (cx + card_w//2, y_pos + 60 + card_h)], 15, fill=color, outline="white", width=3)
+    
+    # Player Photo Circle
+    pimg = get_player_img(player, (200, 200))
     if pimg:
-        mask = Image.new("L", (150, 150), 0)
-        ImageDraw.Draw(mask).ellipse([(0, 0), (150, 150)], fill=255)
-        img.paste(pimg, (cx - 75, 140), mask)
+        mask = Image.new("L", (200, 200), 0)
+        ImageDraw.Draw(mask).ellipse([(0, 0), (200, 200)], fill=255)
+        draw.ellipse([(cx - 105, y_pos + 315), (cx + 105, y_pos + 525)], outline=color, width=4)
+        img.paste(pimg, (cx - 100, y_pos + 320), mask)
     else:
         c = _get_color(team)
-        draw.ellipse([(cx - 75, 140), (cx + 75, 260)], fill=c)
-        _cx(draw, team[:3].upper(), _f(36, bold=True), 160, cx, "white")
+        draw.ellipse([(cx - 100, y_pos + 320), (cx + 100, y_pos + 520)], fill=c)
+        _cx(draw, team[:3].upper(), _f(48, bold=True), y_pos + 380, cx, "white")
+        
+    _cx(draw, player.upper(), _f(42, bold=True), y_pos + 540, cx, "white")
+    _cx(draw, team.upper(), _f(26, bold=True), y_pos + 595, cx, "gray")
     
-    _cx(draw, team.upper(), _f(28, bold=True), 250, cx, "white")
-    _draw_accent_line(draw, 300, EVENT_COLORS[key])
-    _cx(draw, f"{player}  {minute}'", _f(32, bold=True), 315, cx, EVENT_COLORS[key])
     if comp:
-        _cx(draw, comp, _f(20), 500, 600, "gray")
-    path = "post_image.png"; img.save(path); return path
+        _cx(draw, comp.upper(), _f(24), 1080, 600, "gray")
+        
+    path = "post_image.png"
+    img.save(path)
+    return path
 
 def sub_image(team, player_off, player_on, minute, comp):
-    img, draw = _draw_pro_base("SUB", EVENT_COLORS["SUB"])
-    # Team block center
-    _cx(draw, team.upper(), _f(32, bold=True), 140, 600, "white")
+    img, draw = _draw_pro_base("SUBSTITUTION", EVENT_COLORS["SUB"])
     
-    # Player cards
-    y_start = 220
-    draw.rounded_rectangle([(300, y_start), (550, y_start + 60)], 15, fill=(30, 30, 50), outline=(140, 80, 200))
-    _cx(draw, f"OFF: {player_off}", _f(24), y_start + 15, 425, (255, 100, 100))
+    _cx(draw, team.upper(), _f(40, bold=True), 180, 600, "white")
+    _cx(draw, f"MINUTE: {minute}'", _f(28, bold=True), 235, 600, "gray")
     
-    draw.rounded_rectangle([(650, y_start), (900, y_start + 60)], 15, fill=(30, 30, 50), outline=(140, 80, 200))
-    _cx(draw, f"ON:  {player_on}", _f(24), y_start + 15, 775, (100, 255, 100))
+    # Dynamic graphical cards
+    y_start = 330
     
-    _cx(draw, f"{minute}'", _f(28, bold=True), 320, 600, "gray")
+    # Left Card (OFF) - Red Glow
+    draw.rounded_rectangle([(150, y_start), (550, y_start + 450)], 24, fill=(26, 18, 20), outline=(255, 80, 80), width=3)
+    _cx(draw, "PLAYER OUT", _f(28, bold=True), y_start + 30, 350, (255, 80, 80))
+    p_off_img = get_player_img(player_off, (180, 180))
+    if p_off_img:
+        mask = Image.new("L", (180, 180), 0)
+        ImageDraw.Draw(mask).ellipse([(0, 0), (180, 180)], fill=255)
+        img.paste(p_off_img, (350 - 90, y_start + 100), mask)
+    else:
+        draw.ellipse([(350 - 60, y_start + 120), (350 + 60, y_start + 240)], fill=(255, 80, 80))
+    _cx(draw, player_off.upper(), _f(28, bold=True), y_start + 320, 350, "white")
+    _cx(draw, "▼", _f(48), y_start + 370, 350, (255, 80, 80))
+    
+    # Right Card (ON) - Green Glow
+    draw.rounded_rectangle([(650, y_start), (1050, y_start + 450)], 24, fill=(18, 26, 20), outline=(80, 255, 80), width=3)
+    _cx(draw, "PLAYER IN", _f(28, bold=True), y_start + 30, 850, (80, 255, 80))
+    p_on_img = get_player_img(player_on, (180, 180))
+    if p_on_img:
+        mask = Image.new("L", (180, 180), 0)
+        ImageDraw.Draw(mask).ellipse([(0, 0), (180, 180)], fill=255)
+        img.paste(p_on_img, (850 - 90, y_start + 100), mask)
+    else:
+        draw.ellipse([(850 - 60, y_start + 120), (850 + 60, y_start + 240)], fill=(80, 255, 80))
+    _cx(draw, player_on.upper(), _f(28, bold=True), y_start + 320, 850, "white")
+    _cx(draw, "▲", _f(48), y_start + 370, 850, (80, 255, 80))
+    
     if comp:
-        _cx(draw, comp, _f(20), 500, 600, "gray")
-    path = "post_image.png"; img.save(path); return path
+        _cx(draw, comp.upper(), _f(24, bold=True), 1080, 600, "gray")
+        
+    path = "post_image.png"
+    img.save(path)
+    return path
 
 def halftime_image(home, away, sh, sa, scorers_text, comp):
-    img, draw = _draw_pro_base("HALFTIME", EVENT_COLORS["HALFTIME"])
-    _draw_match_center(draw, img, home, away, f"{sh} - {sa}", 140, (255, 165, 0))
+    img, draw = _draw_pro_base("HALF TIME", EVENT_COLORS["HALFTIME"])
+    _draw_match_center(draw, img, home, away, f"{sh} - {sa}", 200, EVENT_COLORS["HALFTIME"])
+    
+    y_pos = 620
+    draw.rounded_rectangle([(150, y_pos), (1050, y_pos + 320)], 24, fill=(18, 18, 32), outline=EVENT_COLORS["HALFTIME"], width=2)
+    
+    _cx(draw, "HALF TIME REPORT", _f(32, bold=True), y_pos + 30, 600, EVENT_COLORS["HALFTIME"])
+    _draw_accent_line(draw, y_pos + 85, (100, 100, 120))
+    
     if scorers_text:
-        _cx(draw, f"Scorers: {scorers_text}", _f(22), 350, 600, "lightgray")
-    _cx(draw, "Second half coming up!", _f(26), 420, 600, (255, 200, 100))
+        _cx(draw, "SCORERS:", _f(22, bold=True), y_pos + 120, 600, "gray")
+        _cx(draw, scorers_text.upper(), _f(28), y_pos + 160, 600, "white")
+    else:
+        _cx(draw, "NO GOALS SCORED YET IN THE FIRST HALF", _f(24), y_pos + 150, 600, "lightgray")
+        
+    _cx(draw, "SECOND HALF COMING UP SOON", _f(24, bold=True), y_pos + 250, 600, "lightblue")
+    
     if comp:
-        _cx(draw, comp, _f(20), 500, 600, "gray")
-    path = "post_image.png"; img.save(path); return path
+        _cx(draw, comp.upper(), _f(24, bold=True), 1080, 600, "gray")
+        
+    path = "post_image.png"
+    img.save(path)
+    return path
 
 def secondhalf_image(home, away, sh, sa, comp):
     img, draw = _draw_pro_base("LIVE", EVENT_COLORS["LIVE"])
-    _cx(draw, "SECOND HALF", _f(38, bold=True), 14, 600, "white")
-    _draw_match_center(draw, img, home, away, f"{sh} - {sa}", 170)
+    _cx(draw, "SECOND HALF UNDERWAY", _f(38, bold=True), 160, 600, "white")
+    _draw_match_center(draw, img, home, away, f"{sh} - {sa}", 260, EVENT_COLORS["LIVE"])
+    
     if comp:
-        _cx(draw, comp, _f(20), 500, 600, "gray")
-    path = "post_image.png"; img.save(path); return path
+        _cx(draw, comp.upper(), _f(24, bold=True), 1080, 600, "gray")
+    path = "post_image.png"
+    img.save(path)
+    return path
 
 def fulltime_image(home, away, sh, sa, scorers, comp):
-    img, draw = _draw_pro_base("FULLTIME", EVENT_COLORS["FULLTIME"])
-    _draw_match_center(draw, img, home, away, f"{sh} - {sa}", 120, (50, 200, 50))
-    _cx(draw, "FINAL RESULT", _f(28, bold=True), 270, 600, (50, 200, 50))
-    y = 320
-    for s in scorers[:5]:
-        _cx(draw, s, _f(22), y, 600, "lightgray"); y += 30
+    img, draw = _draw_pro_base("FULL TIME", EVENT_COLORS["FULLTIME"])
+    _draw_match_center(draw, img, home, away, f"{sh} - {sa}", 160, EVENT_COLORS["FULLTIME"])
+    
+    y_pos = 580
+    draw.rounded_rectangle([(150, y_pos), (1050, y_pos + 420)], 24, fill=(18, 18, 32), outline=EVENT_COLORS["FULLTIME"], width=2)
+    _cx(draw, "MATCH DAY SUMMARY", _f(32, bold=True), y_pos + 30, 600, EVENT_COLORS["FULLTIME"])
+    _draw_accent_line(draw, y_pos + 85, (100, 100, 120))
+    
+    y = y_pos + 120
+    if scorers:
+        _cx(draw, "GOALS:", _f(22, bold=True), y, 600, "gray")
+        y += 40
+        for s in scorers[:5]:
+            _cx(draw, s.upper(), _f(26, bold=True), y, 600, "white")
+            y += 45
+    else:
+        _cx(draw, "GOALLESS ENCOUNTER", _f(30, bold=True), y + 80, 600, "lightgray")
+        
     if comp:
-        _cx(draw, comp, _f(20), 500, 600, "gray")
-    path = "post_image.png"; img.save(path); return path
+        _cx(draw, comp.upper(), _f(24, bold=True), 1100, 600, "gray")
+        
+    path = "post_image.png"
+    img.save(path)
+    return path
 
 def summary_image(home, away, sh, sa, events, comp):
     img, draw = _draw_pro_base("SUMMARY", EVENT_COLORS["SUMMARY"])
-    _draw_match_center(draw, img, home, away, f"{sh} - {sa}", 80)
-    _draw_accent_line(draw, 230, (80, 80, 120))
-    y = 260
-    for e in events[:6]:
-        _cx(draw, e, _f(20), y, 600, "lightgray"); y += 30
-    path = "post_image.png"; img.save(path); return path
+    _draw_match_center(draw, img, home, away, f"{sh} - {sa}", 120, EVENT_COLORS["SUMMARY"])
+    
+    y_pos = 540
+    draw.rounded_rectangle([(150, y_pos), (1050, y_pos + 520)], 24, fill=(18, 18, 32), outline=(100, 100, 120), width=2)
+    _cx(draw, "MATCH TIMELINE", _f(32, bold=True), y_pos + 30, 600, EVENT_COLORS["SUMMARY"])
+    _draw_accent_line(draw, y_pos + 85, (100, 100, 120))
+    
+    y = y_pos + 125
+    for e in events[:7]:
+        _cx(draw, e.upper(), _f(24, bold=True), y, 600, "lightgray")
+        y += 50
+        
+    if comp:
+        _cx(draw, comp.upper(), _f(24, bold=True), 1110, 600, "gray")
+        
+    path = "post_image.png"
+    img.save(path)
+    return path
 
 def schedule_image(lines, date_str):
-    img, draw = _draw_pro_base("MATCH DAY", (40, 140, 255))
-    _cx(draw, date_str, _f(24), 90, 600, "lightgray")
-    y = 150
-    for l in lines[:6]:
+    img, draw = _draw_pro_base("MATCH SCHEDULE", (40, 140, 255))
+    _cx(draw, date_str.upper(), _f(32, bold=True), 140, 600, "lightblue")
+    
+    # Solid background for the list
+    draw.rounded_rectangle([(100, 210), (1100, 1080)], 24, fill=(18, 18, 32), outline=(40, 140, 255), width=2)
+    
+    y = 250
+    for l in lines[:7]:
         parts = l.split("  ") if "  " in l else [l]
-        _cx(draw, parts[0], _f(26, bold=True), y, 600, "white")
+        _cx(draw, parts[0].upper(), _f(30, bold=True), y, 600, "white")
         if len(parts) > 1:
-            _cx(draw, parts[1], _f(20), y + 30, 600, "gray")
-        y += 70
-    _cx(draw, "Follow for live updates!", _f(18), 560, 600, "gray")
-    path = "post_image.png"; img.save(path); return path
-
-def _draw_match_center(draw, img, home, away, score_text, y_pos, accent=None):
-    # Team flags
-    fh = get_flag(home, (100, 100))
-    fa = get_flag(away, (100, 100))
-    
-    # Home flag/circle
-    if fh: img.paste(fh, (150, y_pos - 50), fh)
-    else:
-        c = _get_color(home)
-        draw.ellipse([(150, y_pos - 50), (250, y_pos + 50)], fill=c)
-        _cx(draw, home[:3].upper(), _f(24, bold=True), y_pos + 15, 200, "white")
-    
-    # Away flag/circle
-    if fa: img.paste(fa, (950, y_pos - 50), fa)
-    else:
-        c = _get_color(away)
-        draw.ellipse([(950, y_pos - 50), (1050, y_pos + 50)], fill=c)
-        _cx(draw, away[:3].upper(), _f(24, bold=True), y_pos + 15, 1000, "white")
-    
-    # Names
-    _cx(draw, home.upper(), _f(28, bold=True), y_pos + 70, 200, "white")
-    _cx(draw, away.upper(), _f(28, bold=True), y_pos + 70, 1000, "white")
-    
-    # Score
-    if score_text:
-        _cx(draw, score_text, _f(80, bold=True), y_pos - 20, 600, accent or "white")
-
-def _draw_accent_line(draw, y, color):
-    draw.rounded_rectangle([(200, y), (1000, y + 2)], 1, 1, fill=color)
-
+            _cx(draw, parts[1].upper(), _f(22), y + 42, 600, "gray")
+        y += 110
+        
+    _cx(draw, "FOLLOW PAGE FOR LIVE REALTIME GRAPHICS & UPDATES", _f(20, bold=True), 1120, 600, "gray")
+    path = "post_image.png"
+    img.save(path)
+    return path
 
 def lineup_image(home, away, home_starters, home_bench, away_starters, away_bench, comp):
     img, draw = _draw_pro_base("LINEUPS", EVENT_COLORS["LIVE"])
-    _draw_match_center(draw, img, home, away, "LINEUP", 80, EVENT_COLORS["LIVE"])
-
-    y = 240
-    _cx(draw, "STARTING XI", _f(22, bold=True), y, 200, EVENT_COLORS["LIVE"])
-    for p in home_starters[:6]:
-        y += 30
+    _draw_match_center(draw, img, home, away, "VS", 120, EVENT_COLORS["LIVE"])
+    
+    y = 500
+    # Left Card (Home)
+    draw.rounded_rectangle([(80, y), (560, y + 540)], 24, fill=(18, 18, 32), outline=(255, 255, 255, 15), width=2)
+    _cx(draw, "STARTING XI", _f(26, bold=True), y + 25, 320, EVENT_COLORS["LIVE"])
+    _draw_accent_line(draw, y + 70, (100, 100, 120))
+    
+    line_y = y + 90
+    for p in home_starters[:9]:
         name = p.get("name", "")[:18]
         pos = p.get("position", "")[:4]
-        draw.text((100, y), f"{pos:>4}", fill="gray", font=_f(16))
-        draw.text((160, y), name, fill="white", font=_f(16))
-
-    y = 240
-    _cx(draw, "STARTING XI", _f(22, bold=True), y, 1000, EVENT_COLORS["LIVE"])
-    for p in away_starters[:6]:
-        y += 30
+        draw.text((120, line_y), f"{pos:>4}", fill="gray", font=_f(18))
+        draw.text((190, line_y), name.upper(), fill="white", font=_f(18, bold=True))
+        line_y += 45
+        
+    # Right Card (Away)
+    draw.rounded_rectangle([(640, y), (1120, y + 540)], 24, fill=(18, 18, 32), outline=(255, 255, 255, 15), width=2)
+    _cx(draw, "STARTING XI", _f(26, bold=True), y + 25, 880, EVENT_COLORS["LIVE"])
+    _draw_accent_line(draw, y + 70, (100, 100, 120))
+    
+    line_y = y + 90
+    for p in away_starters[:9]:
         name = p.get("name", "")[:18]
         pos = p.get("position", "")[:4]
-        draw.text((860, y), f"{pos:>4}", fill="gray", font=_f(16))
-        draw.text((920, y), name, fill="white", font=_f(16))
-
-    y = 480
-    if home_bench:
-        _cx(draw, f"Bench: {', '.join(p.get('name','') for p in home_bench[:3])}", _f(18), y, 600, "gray")
+        draw.text((680, line_y), f"{pos:>4}", fill="gray", font=_f(18))
+        draw.text((750, line_y), name.upper(), fill="white", font=_f(18, bold=True))
+        line_y += 45
+        
+    # Bench
+    y_bench = 1065
+    draw.rounded_rectangle([(150, y_bench), (1050, y_bench + 70)], 15, fill=(24, 24, 40))
+    all_bench = [p.get("name","") for p in (home_bench[:2] + away_bench[:2])]
+    if all_bench:
+        _cx(draw, f"BENCH PREVIEW: {', '.join(all_bench).upper()}", _f(18, bold=True), y_bench + 25, 600, "gray")
+        
     if comp:
-        _cx(draw, comp, _f(20), 540, 600, "gray")
+        _cx(draw, comp.upper(), _f(22, bold=True), 1150, 600, "gray")
+        
     path = "post_image.png"
     img.save(path)
     return path

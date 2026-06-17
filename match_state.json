@@ -1,1 +1,67 @@
-{}
+{
+  "537397": {
+    "last_status": "FINISHED",
+    "goals": [],
+    "cards": [],
+    "subs": [],
+    "started": false,
+    "halftime": false,
+    "secondhalf": false,
+    "fulltime": false,
+    "summary_posted": false,
+    "home": "Argentina",
+    "away": "Algeria"
+  },
+  "537398": {
+    "last_status": "FINISHED",
+    "goals": [],
+    "cards": [],
+    "subs": [],
+    "started": false,
+    "halftime": false,
+    "secondhalf": false,
+    "fulltime": false,
+    "summary_posted": false,
+    "home": "Austria",
+    "away": "Jordan"
+  },
+  "537403": {
+    "last_status": "IN_PLAY",
+    "goals": [],
+    "cards": [],
+    "subs": [],
+    "started": true,
+    "halftime": false,
+    "secondhalf": false,
+    "fulltime": false,
+    "summary_posted": false,
+    "home": "Portugal",
+    "away": "Congo DR"
+  },
+  "537409": {
+    "last_status": "TIMED",
+    "goals": [],
+    "cards": [],
+    "subs": [],
+    "started": false,
+    "halftime": false,
+    "secondhalf": false,
+    "fulltime": false,
+    "summary_posted": false,
+    "home": "England",
+    "away": "Croatia"
+  },
+  "537410": {
+    "last_status": "TIMED",
+    "goals": [],
+    "cards": [],
+    "subs": [],
+    "started": false,
+    "halftime": false,
+    "secondhalf": false,
+    "fulltime": false,
+    "summary_posted": false,
+    "home": "Ghana",
+    "away": "Panama"
+  }
+}
