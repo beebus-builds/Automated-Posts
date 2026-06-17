@@ -3,7 +3,7 @@ services:
     name: football-poster
     env: python
     buildCommand: pip install -r requirements.txt
-    startCommand: gunicorn src.web:app
+    startCommand: gunicorn src.app:app
     envVars:
       - key: FOOTBALL_API_KEY
         sync: false

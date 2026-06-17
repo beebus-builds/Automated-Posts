@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Match Poster Dashboard</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0a0a12; color: #fff; min-height: 100vh; }
+.container { max-width: 700px; margin: 0 auto; padding: 20px; }
+h1 { text-align: center; font-size: 28px; padding: 20px 0; color: #40a8ff; border-bottom: 2px solid #40a8ff44; margin-bottom: 24px; }
+h1 span { color: #fff; }
+.card { background: #14142a; border-radius: 16px; padding: 24px; margin-bottom: 20px; border: 1px solid #2a2a4a; }
+label { display: block; font-size: 13px; color: #888; margin-bottom: 4px; margin-top: 14px; text-transform: uppercase; letter-spacing: 0.5px; }
+input, select, textarea { width: 100%; padding: 12px 14px; background: #1a1a30; border: 1px solid #2a2a4a; border-radius: 10px; color: #fff; font-size: 15px; outline: none; transition: border 0.2s; }
+input:focus, select:focus, textarea:focus { border-color: #40a8ff; }
+select { appearance: auto; cursor: pointer; }
+select option { background: #1a1a30; color: #fff; }
+.row { display: flex; gap: 12px; }
+.row > * { flex: 1; }
+.hidden { display: none; }
+.btn { width: 100%; padding: 16px; background: linear-gradient(135deg, #40a8ff, #2060cc); border: none; border-radius: 12px; color: #fff; font-size: 18px; font-weight: bold; cursor: pointer; margin-top: 20px; transition: transform 0.1s, box-shadow 0.2s; }
+.btn:hover { transform: translateY(-1px); box-shadow: 0 8px 24px #40a8ff44; }
+.btn:active { transform: translateY(0); }
+.btn:disabled { opacity: 0.5; cursor: not-allowed; }
+#result { margin-top: 20px; padding: 16px; border-radius: 12px; display: none; word-break: break-word; }
+#result.success { background: #0a2a1a; border: 1px solid #20cc60; display: block; }
+#result.error { background: #2a0a0a; border: 1px solid #cc4040; display: block; }
+#result a { color: #40a8ff; }
+.spinner { display: inline-block; width: 20px; height: 20px; border: 3px solid #ffffff44; border-top-color: #fff; border-radius: 50%; animation: spin 0.6s linear infinite; margin-right: 8px; vertical-align: middle; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.fb-link { display: inline-block; margin-top: 10px; padding: 8px 16px; background: #1877f2; color: #fff; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 14px; }
+.fb-link:hover { background: #166fe5; }
+.section-title { font-size: 16px; color: #40a8ff; margin-bottom: 12px; font-weight: bold; text-transform: uppercase; letter-spacing: 1px; }
+.quick-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; }
+.quick-btn { padding: 8px 16px; border-radius: 8px; border: 1px solid #2a2a4a; background: #1a1a30; color: #fff; cursor: pointer; font-size: 13px; transition: all 0.2s; }
+.quick-btn:hover { border-color: #40a8ff; background: #1a1a40; }
+.quick-btn.active { border-color: #40a8ff; background: #40a8ff22; }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>Match <span>Poster</span></h1>
+
+  <div class="card">
+    <div class="section-title">Quick Event</div>
+    <div class="quick-actions">
+      <button class="quick-btn" onclick="setEvent('live')">Match Start</button>
+      <button class="quick-btn" onclick="setEvent('goal')">Goal</button>
+      <button class="quick-btn" onclick="setEvent('card')">Card</button>
+      <button class="quick-btn" onclick="setEvent('sub')">Sub</button>
+      <button class="quick-btn" onclick="setEvent('halftime')">Half Time</button>
+      <button class="quick-btn" onclick="setEvent('fulltime')">Full Time</button>
+      <button class="quick-btn" onclick="setEvent('summary')">Summary</button>
+    </div>
+
+    <form id="postForm">
+      <label>Event Type</label>
+      <select name="event" id="eventSelect" onchange="toggleFields()">
+        <option value="live">Match Start / Live</option>
+        <option value="goal">Goal</option>
+        <option value="card">Card (Yellow/Red)</option>
+        <option value="sub">Substitution</option>
+        <option value="halftime">Half Time</option>
+        <option value="secondhalf">Second Half</option>
+        <option value="fulltime">Full Time</option>
+        <option value="summary">Match Summary</option>
+      </select>
+
+      <div class="row">
+        <div>
+          <label>Home Team</label>
+          <input name="home" id="home" placeholder="e.g. Portugal">
+        </div>
+        <div>
+          <label>Away Team</label>
+          <input name="away" id="away" placeholder="e.g. Congo DR">
+        </div>
+      </div>
+
+      <label>Competition</label>
+      <input name="comp" id="comp" placeholder="e.g. FIFA World Cup - Group K">
+
+      <div id="fields-live" class="event-fields">
+        <label>Kickoff Time</label>
+        <input name="time" placeholder="e.g. 17:00 UTC">
+      </div>
+
+      <div id="fields-goal" class="event-fields hidden">
+        <div class="row">
+          <div><label>Home Score</label><input name="sh" type="number" min="0" value="0"></div>
+          <div><label>Away Score</label><input name="sa" type="number" min="0" value="0"></div>
+        </div>
+        <label>Scorer Name</label>
+        <input name="scorer" placeholder="e.g. Cristiano Ronaldo">
+        <div class="row">
+          <div><label>Minute</label><input name="minute" placeholder="e.g. 23"></div>
+          <div><label>Side</label><select name="team_side"><option value="home">Home</option><option value="away">Away</option></select></div>
+        </div>
+        <label>Assist (optional)</label>
+        <input name="assist" placeholder="e.g. Bruno Fernandes">
+      </div>
+
+      <div id="fields-card" class="event-fields hidden">
+        <label>Team</label>
+        <input name="team" placeholder="e.g. Portugal">
+        <label>Player Name</label>
+        <input name="player" placeholder="e.g. Pepe">
+        <div class="row">
+          <div><label>Minute</label><input name="minute" placeholder="e.g. 67"></div>
+          <div><label>Card Type</label><select name="card_type"><option value="YELLOW">Yellow</option><option value="RED">Red</option></select></div>
+        </div>
+      </div>
+
+      <div id="fields-sub" class="event-fields hidden">
+        <label>Team</label>
+        <input name="team" placeholder="e.g. Portugal">
+        <label>Player Off</label>
+        <input name="off" placeholder="e.g. Joao Felix">
+        <label>Player On</label>
+        <input name="on" placeholder="e.g. Diogo Jota">
+        <label>Minute</label>
+        <input name="minute" placeholder="e.g. 72">
+      </div>
+
+      <div id="fields-halftime" class="event-fields hidden">
+        <div class="row">
+          <div><label>Home Score</label><input name="sh" type="number" min="0" value="0"></div>
+          <div><label>Away Score</label><input name="sa" type="number" min="0" value="0"></div>
+        </div>
+        <label>Scorers (comma separated)</label>
+        <input name="scorers" placeholder="e.g. Ronaldo 23', Messi 45+2'">
+      </div>
+
+      <div id="fields-secondhalf" class="event-fields hidden">
+        <div class="row">
+          <div><label>Home Score</label><input name="sh" type="number" min="0" value="0"></div>
+          <div><label>Away Score</label><input name="sa" type="number" min="0" value="0"></div>
+        </div>
+      </div>
+
+      <div id="fields-fulltime" class="event-fields hidden">
+        <div class="row">
+          <div><label>Home Score</label><input name="sh" type="number" min="0" value="0"></div>
+          <div><label>Away Score</label><input name="sa" type="number" min="0" value="0"></div>
+        </div>
+        <label>Scorers (comma separated)</label>
+        <input name="scorers" placeholder="e.g. Ronaldo 23' pen, Leao 67'">
+      </div>
+
+      <div id="fields-summary" class="event-fields hidden">
+        <div class="row">
+          <div><label>Home Score</label><input name="sh" type="number" min="0" value="0"></div>
+          <div><label>Away Score</label><input name="sa" type="number" min="0" value="0"></div>
+        </div>
+        <label>Events (comma separated)</label>
+        <textarea name="events" rows="3" placeholder="Goal: Ronaldo 23', Yellow card: Pepe 67', Sub: Jota in, Felix out"></textarea>
+      </div>
+
+      <button type="submit" class="btn" id="submitBtn">
+        <span class="spinner" id="spinner" style="display:none"></span>
+        <span id="btnText">Post to Facebook</span>
+      </button>
+    </form>
+
+    <div id="result"></div>
+  </div>
+</div>
+
+<script>
+function setEvent(type) {
+  document.getElementById('eventSelect').value = type;
+  toggleFields();
+  document.querySelectorAll('.quick-btn').forEach(b => b.classList.remove('active'));
+  event.target.classList.add('active');
+}
+
+function toggleFields() {
+  const val = document.getElementById('eventSelect').value;
+  document.querySelectorAll('.event-fields').forEach(el => el.classList.add('hidden'));
+  const target = document.getElementById('fields-' + val);
+  if (target) target.classList.remove('hidden');
+}
+
+document.getElementById('postForm').addEventListener('submit', async function(e) {
+  e.preventDefault();
+  const btn = document.getElementById('submitBtn');
+  const spinner = document.getElementById('spinner');
+  const btnText = document.getElementById('btnText');
+  const result = document.getElementById('result');
+
+  btn.disabled = true;
+  spinner.style.display = 'inline-block';
+  btnText.textContent = 'Posting...';
+  result.style.display = 'none';
+  result.className = '';
+
+  const formData = new FormData(this);
+
+  try {
+    const res = await fetch('/post', { method: 'POST', body: formData });
+    const data = await res.json();
+
+    if (data.success) {
+      let html = '<strong>Posted!</strong><br>' + data.caption;
+      if (data.fb_url) html += '<br><a class="fb-link" href="' + data.fb_url + '" target="_blank">View on Facebook</a>';
+      result.className = 'success';
+      result.innerHTML = html;
+    } else {
+      result.className = 'error';
+      result.innerHTML = '<strong>Error:</strong> ' + (data.error || 'Unknown error');
+    }
+  } catch (err) {
+    result.className = 'error';
+    result.innerHTML = '<strong>Network error:</strong> ' + err.message;
+  }
+
+  btn.disabled = false;
+  spinner.style.display = 'none';
+  btnText.textContent = 'Post to Facebook';
+});
+</script>
+</body>
+</html>
