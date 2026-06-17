@@ -153,37 +153,62 @@ def get_team_badge(team, size=(150, 150)):
     BADGE_CACHE[t] = None
     return None
 
+import random
+
+def _draw_grunge_bg(draw, W, H, color1, color2):
+    # Base deep dark gradient
+    for i in range(H):
+        alpha = int(30 * (1 - i/H))
+        draw.line([(0, i), (W, i)], fill=(8+alpha, 8+alpha, 14+alpha))
+    
+    # Color splashes (simulated grunge)
+    for _ in range(15):
+        x = random.randint(0, W)
+        y = random.randint(0, H)
+        size = random.randint(200, 600)
+        # Draw a "splash" of team color with low opacity
+        overlay = Image.new("RGBA", (W, H), (0,0,0,0))
+        od = ImageDraw.Draw(overlay)
+        c = color1 if random.random() > 0.5 else color2
+        od.ellipse([x-size, y-size, x+size, y+size], fill=(c[0], c[1], c[2], 30))
+        # Add some "splatters" (small dots)
+        for _ in range(20):
+            sx, sy = x + random.randint(-size, size), y + random.randint(-size, size)
+            od.ellipse([sx, sy, sx+2, sy+2], fill=(c[0], c[1], c[2], 100))
+        
+        # Use alpha composite to blend into main img
+        # This is handled in _draw_pro_base
+        return overlay # simplified for this helper
+
 def _draw_pro_base(label, color):
     _init()
     W, H = 1200, 1200
-    img = Image.new("RGB", (W, H), (10, 10, 16))
+    img = Image.new("RGB", (W, H), (5, 5, 10))
     draw = ImageDraw.Draw(img)
     
-    # Background gradient
-    for i in range(H):
-        alpha = int(45 * (1 - i/H))
-        c = (8+alpha, 8+alpha, 14+alpha)
-        draw.line([(0, i), (W, i)], fill=c)
-        
-    # Modern cyber/tech grid lines (diagonal accents)
-    for x in range(0, W, 100):
-        draw.line([(x, 0), (x - 300, H)], fill=(22, 22, 38), width=2)
+    # Atmospheric Radial Glow
+    for r in range(H, 0, -20):
+        alpha = int(20 * (1 - r/H))
+        draw.ellipse([600-r, 600-r, 600+r, 600+r], outline=(color[0], color[1], color[2], alpha), width=2)
     
-    # Neon top bar
-    draw.rectangle([(0, 0), (W, 100)], fill=(12, 12, 20))
-    draw.line([(0, 100), (W, 100)], fill=color, width=4)
-    
-    # Glows
-    glow = Image.new("RGBA", (W, H), (0, 0, 0, 0))
-    gd = ImageDraw.Draw(glow)
-    gd.ellipse([( -200, -200), (400, 400)], fill=(color[0], color[1], color[2], 35))
-    gd.ellipse([(800, -200), (1400, 400)], fill=(color[0], color[1], color[2], 35))
-    gd.ellipse([(400, 400), (800, 800)], fill=(color[0], color[1], color[2], 25))
-    img = Image.alpha_composite(img.convert("RGBA"), glow).convert("RGB")
+    # Grunge splatter effects
+    overlay = Image.new("RGBA", (W, H), (0,0,0,0))
+    od = ImageDraw.Draw(overlay)
+    for _ in range(20):
+        x, y = random.randint(0, W), random.randint(0, H)
+        s = random.randint(100, 400)
+        c = color if random.random() > 0.5 else (255, 255, 255)
+        od.ellipse([x-s, y-s, x+s, y+s], fill=(c[0], c[1], c[2], 20))
+        # Small sparks
+        for _ in range(10):
+            sx, sy = x + random.randint(-s, s), y + random.randint(-s, s)
+            od.ellipse([sx, sy, sx+3, sy+3], fill=(c[0], c[1], c[2], 150))
+            
+    img = Image.alpha_composite(img.convert("RGBA"), overlay).convert("RGB")
     draw = ImageDraw.Draw(img)
     
-    # Header Label Text
-    _cx(draw, label.upper(), _f(52, bold=True), 22, 600, "white")
+    # Top Logo placeholder/Header
+    _cx(draw, label.upper(), _f(60, bold=True), 40, 600, "white")
     
     return img, draw
 
@@ -253,31 +278,56 @@ def live_image(home, away, comp, time_str=""):
     return path
 
 def goal_image(home, away, sh, sa, scorer, minute, assist, comp):
-    img, draw = _draw_pro_base("GOAL", EVENT_COLORS["GOAL"])
-    _draw_match_center(draw, img, home, away, f"{sh} - {sa}", 180, EVENT_COLORS["GOAL"])
+    img, draw = _draw_pro_base(" ", EVENT_COLORS["GOAL"])
     
-    cx = 600
-    y_player = 620
-    p_size = 280
+    # 1. Background accents (Red/Green split for Portugal match)
+    # Red splash on left, Green on right
+    overlay = Image.new("RGBA", (1200, 1200), (0,0,0,0))
+    od = ImageDraw.Draw(overlay)
+    od.rectangle([0, 0, 700, 1200], fill=(200, 0, 0, 40))
+    od.rectangle([500, 0, 1200, 1200], fill=(0, 150, 0, 40))
+    img = Image.alpha_composite(img.convert("RGBA"), overlay).convert("RGB")
+    draw = ImageDraw.Draw(img)
     
-    draw.rounded_rectangle([(200, y_player - 30), (1000, y_player + 380)], 24, fill=(18, 18, 32), outline=EVENT_COLORS["GOAL"], width=3)
+    # 2. Massive Textured "GOAL!" Text
+    # Shadow for depth
+    _cx(draw, "GOAL!", _f(240, bold=True), 180, 550, (80, 0, 0))
+    # Main white text
+    _cx(draw, "GOAL!", _f(240, bold=True), 170, 550, "white")
     
-    pimg = get_player_img(scorer, (p_size, p_size))
+    # 3. Huge Player Cutout (Right Side)
+    pimg = get_player_img(scorer, (800, 800))
     if pimg:
-        mask = Image.new("L", (p_size, p_size), 0)
-        ImageDraw.Draw(mask).ellipse([(0, 0), (p_size, p_size)], fill=255)
-        draw.ellipse([(cx - p_size//2 - 5, y_player - 5), (cx + p_size//2 + 5, y_player + p_size + 5)], outline=EVENT_COLORS["GOAL"], width=5)
-        img.paste(pimg, (cx - p_size//2, y_player), mask)
-    else:
-        draw.ellipse([(cx - p_size//2, y_player), (cx + p_size//2, y_player + p_size)], fill=EVENT_COLORS["GOAL"])
-        _cx(draw, scorer[:2].upper(), _f(80, bold=True), y_player + p_size//2 - 30, cx, (14, 14, 28))
-        
-    _cx(draw, f"{scorer.upper()}", _f(52, bold=True), y_player + p_size + 25, cx, EVENT_COLORS["GOAL"])
-    _cx(draw, f"MINUTE: {minute}'", _f(34, bold=True), y_player + p_size + 95, cx, "white")
+        # Positioned to overlap the GOAL text and dominate the right side
+        img.paste(pimg, (450, 150), pimg if pimg.mode == "RGBA" else None)
     
-    if assist:
-        _cx(draw, f"ASSIST BY: {assist.upper()}", _f(26), y_player + p_size + 155, cx, "lightgray")
-        
+    # 4. Scorer Banner (Brush-stroke style)
+    banner_color = (200, 0, 0)
+    draw.rounded_rectangle([(100, 440), (750, 520)], 15, fill=banner_color, outline="white", width=2)
+    _cx(draw, scorer.upper(), _f(70, bold=True), 455, 425, "white")
+    
+    # Team name below banner
+    _cx(draw, home.upper(), _f(40, bold=True), 530, 425, (0, 200, 0))
+    
+    # 5. Minute with Ball Icon
+    _cx(draw, f"{minute}'", _f(60, bold=True), 660, 150, "white")
+    
+    # 6. Hexagonal Scoreboard at bottom
+    points = [(150, 920), (300, 870), (600, 870), (900, 870), (1050, 920), (1050, 1050), (150, 1050)]
+    draw.polygon(points, fill=(10, 10, 20), outline="white", width=3)
+    
+    # Flags in Hexagons
+    fh = get_flag(home, (140, 90))
+    if fh: img.paste(fh, (210, 890), fh if fh.mode == "RGBA" else None)
+    _cx(draw, home.upper(), _f(24, bold=True), 980, 280, "white")
+    
+    fa = get_flag(away, (140, 90))
+    if fa: img.paste(fa, (850, 890), fa if fa.mode == "RGBA" else None)
+    _cx(draw, away.upper(), _f(24, bold=True), 980, 920, "white")
+    
+    # Large Score
+    _cx(draw, f"{sh} - {sa}", _f(140, bold=True), 880, 600, "white")
+    
     if comp:
         _cx(draw, comp.upper(), _f(24, bold=True), 1120, 600, "gray")
         
@@ -288,87 +338,78 @@ def goal_image(home, away, sh, sa, scorer, minute, assist, comp):
 def card_image(team, player, minute, card_type, comp):
     key = "RED" if "RED" in card_type.upper() else "YELLOW"
     color = EVENT_COLORS[key]
-    img, draw = _draw_pro_base(key, color)
+    img, draw = _draw_pro_base(" ", color)
     
-    # Top info text
-    _cx(draw, f"BOOKING RECEIVED IN {minute}'", _f(28, bold=True), 160, 600, color)
+    # Grunge Split Background
+    overlay = Image.new("RGBA", (1200, 1200), (0,0,0,0))
+    od = ImageDraw.Draw(overlay)
+    od.rectangle([0, 0, 1200, 1200], fill=(color[0], color[1], color[2], 30))
+    img = Image.alpha_composite(img.convert("RGBA"), overlay).convert("RGB")
+    draw = ImageDraw.Draw(img)
     
-    cx = 600
-    y_pos = 280
+    # Massive "YELLOW CARD" or "RED CARD" Text
+    _cx(draw, key.upper(), _f(180, bold=True), 150, 600, color)
+    _cx(draw, "CARD", _f(140, bold=True), 300, 600, "white")
     
-    # Outer glassy container
-    draw.rounded_rectangle([(200, y_pos), (1000, y_pos + 620)], 24, fill=(18, 18, 32), outline=(255, 255, 255, 15), width=2)
-    
-    # Draw actual card graphic
-    card_w, card_h = 140, 200
-    draw.rounded_rectangle([(cx - card_w//2, y_pos + 60), (cx + card_w//2, y_pos + 60 + card_h)], 15, fill=color, outline="white", width=3)
-    
-    # Player Photo Circle — bigger
-    p_size = 240
-    pimg = get_player_img(player, (p_size, p_size))
-    px = cx - p_size//2
-    py = y_pos + 300
+    # Huge Player Cutout (Right Side)
+    pimg = get_player_img(player, (700, 700))
     if pimg:
-        mask = Image.new("L", (p_size, p_size), 0)
-        ImageDraw.Draw(mask).ellipse([(0, 0), (p_size, p_size)], fill=255)
-        draw.ellipse([(px - 5, py - 5), (px + p_size + 5, py + p_size + 5)], outline=color, width=5)
-        img.paste(pimg, (px, py), mask)
-    else:
-        c = _get_color(team)
-        draw.ellipse([(px, py), (px + p_size, py + p_size)], fill=c)
-        _cx(draw, team[:3].upper(), _f(56, bold=True), py + p_size//2 - 20, cx, "white")
-        
-    _cx(draw, player.upper(), _f(46, bold=True), py + p_size + 15, cx, "white")
-    _cx(draw, team.upper(), _f(28, bold=True), py + p_size + 75, cx, "gray")
+        img.paste(pimg, (500, 300), pimg if pimg.mode == "RGBA" else None)
+    
+    # The Actual Card Graphic (Floating)
+    card_w, card_h = 250, 350
+    draw.rounded_rectangle([(150, 300), (150 + card_w, 300 + card_h)], 20, fill=color, outline="white", width=8)
+    
+    # Name and Team
+    draw.rounded_rectangle([(100, 800), (600, 950)], 20, fill=(10, 10, 20), outline=color, width=3)
+    _cx(draw, player.upper(), _f(60, bold=True), 830, 350, "white")
+    _cx(draw, f"{team.upper()} - {minute}'", _f(30, bold=True), 880, 350, "gray")
     
     if comp:
-        _cx(draw, comp.upper(), _f(24), 1080, 600, "gray")
+        _cx(draw, comp.upper(), _f(24, bold=True), 1120, 600, "gray")
         
     path = "post_image.png"
     img.save(path)
     return path
 
 def sub_image(team, player_off, player_on, minute, comp):
-    img, draw = _draw_pro_base("SUBSTITUTION", EVENT_COLORS["SUB"])
+    img, draw = _draw_pro_base(" ", EVENT_COLORS["SUB"])
     
-    _cx(draw, team.upper(), _f(40, bold=True), 180, 600, "white")
-    _cx(draw, f"MINUTE: {minute}'", _f(28, bold=True), 235, 600, "gray")
+    # 1. Red/Green Split Background
+    overlay = Image.new("RGBA", (1200, 1200), (0,0,0,0))
+    od = ImageDraw.Draw(overlay)
+    od.rectangle([0, 0, 600, 1200], fill=(150, 0, 0, 40))
+    od.rectangle([600, 0, 1200, 1200], fill=(0, 150, 0, 40))
+    img = Image.alpha_composite(img.convert("RGBA"), overlay).convert("RGB")
+    draw = ImageDraw.Draw(img)
     
-    # Dynamic graphical cards
-    y_start = 330
+    # 2. Massive "SUBSTITUTION" Text
+    _cx(draw, "SUBSTITUTION", _f(120, bold=True), 100, 600, "white")
     
-    s_size = 220
-    # Left Card (OFF) - Red Glow
-    draw.rounded_rectangle([(100, y_start), (550, y_start + 520)], 24, fill=(26, 18, 20), outline=(255, 80, 80), width=3)
-    _cx(draw, "PLAYER OUT", _f(28, bold=True), y_start + 25, 325, (255, 80, 80))
-    pox, poy = 325 - s_size//2, y_start + 60
-    p_off_img = get_player_img(player_off, (s_size, s_size))
-    if p_off_img:
-        mask = Image.new("L", (s_size, s_size), 0)
-        ImageDraw.Draw(mask).ellipse([(0, 0), (s_size, s_size)], fill=255)
-        img.paste(p_off_img, (pox, poy), mask)
-    else:
-        draw.ellipse([(pox, poy), (pox + s_size, poy + s_size)], fill=(255, 80, 80))
-    _cx(draw, player_off.upper(), _f(30, bold=True), poy + s_size + 20, 325, "white")
-    _cx(draw, "▼", _f(52), poy + s_size + 80, 325, (255, 80, 80))
+    # 3. Large Player Cutouts
+    p_size = 700
+    p_off = get_player_img(player_off, (p_size, p_size))
+    p_on = get_player_img(player_on, (p_size, p_size))
     
-    # Right Card (ON) - Green Glow
-    draw.rounded_rectangle([(650, y_start), (1100, y_start + 520)], 24, fill=(18, 26, 20), outline=(80, 255, 80), width=3)
-    _cx(draw, "PLAYER IN", _f(28, bold=True), y_start + 25, 875, (80, 255, 80))
-    pix, piy = 875 - s_size//2, y_start + 60
-    p_on_img = get_player_img(player_on, (s_size, s_size))
-    if p_on_img:
-        mask = Image.new("L", (s_size, s_size), 0)
-        ImageDraw.Draw(mask).ellipse([(0, 0), (s_size, s_size)], fill=255)
-        img.paste(p_on_img, (pix, piy), mask)
-    else:
-        draw.ellipse([(pix, piy), (pix + s_size, piy + s_size)], fill=(80, 255, 80))
-    _cx(draw, player_on.upper(), _f(30, bold=True), piy + s_size + 20, 875, "white")
-    _cx(draw, "▲", _f(52), piy + s_size + 80, 875, (80, 255, 80))
+    if p_off: img.paste(p_off, (100, 300), p_off if p_off.mode == "RGBA" else None)
+    if p_on: img.paste(p_on, (500, 300), p_on if p_on.mode == "RGBA" else None)
     
-    if comp:
-        _cx(draw, comp.upper(), _f(24, bold=True), 1080, 600, "gray")
-        
+    # 4. Professional Name Blocks
+    # OFF Block
+    draw.rounded_rectangle([(100, 850), (550, 950)], 10, fill=(20, 10, 10), outline=(255, 0, 0), width=3)
+    _cx(draw, f"OUT {player_off.upper()}", _f(44, bold=True), 870, 325, "white")
+    
+    # ON Block
+    draw.rounded_rectangle([(650, 850), (1100, 950)], 10, fill=(10, 20, 10), outline=(0, 255, 0), width=3)
+    _cx(draw, f"IN {player_on.upper()}", _f(44, bold=True), 870, 875, "white")
+    
+    # 5. Bottom Score/Flags
+    points = [(400, 1000), (550, 950), (850, 950), (1000, 1000), (1000, 1100), (400, 1100)]
+    draw.polygon(points, fill=(10, 10, 20), outline="white", width=2)
+    fh = get_flag(team, (100, 60))
+    if fh: img.paste(fh, (450, 970), fh if fh.mode == "RGBA" else None)
+    _cx(draw, f"{team.upper()} {minute}'", _f(30, bold=True), 1020, 600, "white")
+    
     path = "post_image.png"
     img.save(path)
     return path
@@ -408,29 +449,65 @@ def secondhalf_image(home, away, sh, sa, comp):
     path = "post_image.png"
     img.save(path)
     return path
-
 def fulltime_image(home, away, sh, sa, scorers, comp):
-    img, draw = _draw_pro_base("FULL TIME", EVENT_COLORS["FULLTIME"])
-    _draw_match_center(draw, img, home, away, f"{sh} - {sa}", 160, EVENT_COLORS["FULLTIME"])
+    img, draw = _draw_pro_base(" ", EVENT_COLORS["FULLTIME"])
     
-    y_pos = 580
-    draw.rounded_rectangle([(150, y_pos), (1050, y_pos + 420)], 24, fill=(18, 18, 32), outline=EVENT_COLORS["FULLTIME"], width=2)
-    _cx(draw, "MATCH DAY SUMMARY", _f(32, bold=True), y_pos + 30, 600, EVENT_COLORS["FULLTIME"])
-    _draw_accent_line(draw, y_pos + 85, (100, 100, 120))
+    # 1. Atmospheric Background
+    overlay = Image.new("RGBA", (1200, 1200), (0,0,0,0))
+    od = ImageDraw.Draw(overlay)
+    od.rectangle([0, 0, 600, 1200], fill=(50, 0, 0, 30))
+    od.rectangle([600, 0, 1200, 1200], fill=(0, 50, 0, 30))
+    img = Image.alpha_composite(img.convert("RGBA"), overlay).convert("RGB")
+    draw = ImageDraw.Draw(img)
     
-    y = y_pos + 120
+    # 2. Massive "FULL TIME" Text
+    _cx(draw, "FULL TIME", _f(160, bold=True), 150, 600, "white")
+    
+    # 3. Star Players on sides
+    # Home star
+    ph = get_player_img(home, (600, 600))
+    if ph: img.paste(ph, (0, 400), ph if ph.mode == "RGBA" else None)
+    # Away star
+    pa = get_player_img(away, (600, 600))
+    if pa: img.paste(pa, (600, 400), pa if pa.mode == "RGBA" else None)
+    
+    # 4. Centered Score Hexagon
+    points = [(400, 500), (500, 450), (700, 450), (800, 500), (800, 600), (400, 600)]
+    draw.polygon(points, fill=(10, 10, 20), outline="white", width=3)
+    
+    # Flags
+    fh = get_flag(home, (100, 60))
+    if fh: img.paste(fh, (420, 470), fh if fh.mode == "RGBA" else None)
+    fa = get_flag(away, (100, 60))
+    if fa: img.paste(fa, (680, 470), fa if fa.mode == "RGBA" else None)
+    
+    # Score
+    _cx(draw, f"{sh} - {sa}", _f(120, bold=True), 470, 600, "white")
+    _cx(draw, home.upper(), _f(24, bold=True), 550, 460, "white")
+    _cx(draw, away.upper(), _f(24, bold=True), 550, 740, "white")
+    
+    # 5. Detailed Match Stats Grid at bottom
+    stats_y = 750
+    draw.rounded_rectangle([(100, stats_y), (1100, stats_y + 350)], 20, fill=(15, 15, 30), outline="white", width=2)
+    
+    # Scorer List
+    _cx(draw, "MATCH EVENTS", _f(32, bold=True), stats_y + 30, 600, EVENT_COLORS["FULLTIME"])
+    y = stats_y + 80
     if scorers:
-        _cx(draw, "GOALS:", _f(22, bold=True), y, 600, "gray")
-        y += 40
         for s in scorers[:5]:
-            _cx(draw, s.upper(), _f(26, bold=True), y, 600, "white")
-            y += 45
+            _cx(draw, s.upper(), _f(28), y, 600, "white")
+            y += 40
     else:
-        _cx(draw, "GOALLESS ENCOUNTER", _f(30, bold=True), y + 80, 600, "lightgray")
+        _cx(draw, "NO GOALS", _f(28), stats_y + 100, 600, "gray")
         
-    if comp:
-        _cx(draw, comp.upper(), _f(24, bold=True), 1100, 600, "gray")
-        
+    # Match Stats (Mocked for look)
+    stats = [("POSSESSION", f"{sh*10}% vs {sa*10}%"), ("SHOTS", f"{sh*5} vs {sa*5}"), ("CORNERS", "5 vs 3")]
+    for i, (label, val) in enumerate(stats):
+        x_pos = 200 + i*300
+        draw.rounded_rectangle([(x_pos, 1050), (x_pos + 250, 1120)], 10, fill=(20, 20, 40), outline="gray", width=1)
+        _cx(draw, label, _f(18, bold=True), 1060, x_pos + 125, "gray")
+        _cx(draw, val, _f(24, bold=True), 1080, x_pos + 125, "white")
+    
     path = "post_image.png"
     img.save(path)
     return path
