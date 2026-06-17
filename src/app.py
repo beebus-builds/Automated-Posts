@@ -1,10 +1,10 @@
 import os, json, requests, re
-from flask import Flask, request, jsonify, render_template, send_from_directory
+from flask import Flask, request, jsonify, render_template
 from dotenv import load_dotenv
 from .image_generator import (
     live_image, goal_image, card_image, sub_image,
     halftime_image, secondhalf_image, fulltime_image,
-    summary_image, schedule_image
+    summary_image
 )
 
 load_dotenv()
@@ -57,54 +57,181 @@ def generate_video(img_path, output_path, caption):
     return None
 
 def smart_parse(text):
-    text = text.lower()
-    data = {"home": "Portugal", "away": "Congo DR", "comp": "FIFA World Cup 2026", "sh": 0, "sa": 0}
-    score_match = re.search(r"(\d+)\s*-\s*(\d+)", text)
-    if score_match:
-        data["sh"], data["sa"] = int(score_match.group(1)), int(score_match.group(2))
-    min_match = re.search(r"(\d+)\s*('|min)", text)
-    minute = min_match.group(1) if min_match else "?"
-    if any(k in text for k in ["goal", "scored", "score"]):
+    original = text
+    text_lower = text.lower().strip()
+
+    known_teams = [
+        "Argentina", "Brazil", "Portugal", "Spain", "France", "Germany",
+        "Italy", "Netherlands", "England", "Belgium", "Croatia", "Denmark",
+        "Switzerland", "Uruguay", "Colombia", "Japan", "South Korea",
+        "Senegal", "Morocco", "Nigeria", "Cameroon", "Ghana", "Algeria",
+        "Tunisia", "Egypt", "Ivory Coast", "Congo DR", "Mali", "Burkina Faso",
+        "USA", "Mexico", "Canada", "Costa Rica", "Jamaica", "Honduras",
+        "Australia", "New Zealand", "Saudi Arabia", "Iran", "Qatar",
+        "Turkey", "Poland", "Russia", "Czech Republic", "Sweden", "Norway",
+        "Scotland", "Wales", "Austria", "Hungary", "Serbia", "Romania",
+        "Ukraine", "Greece", "Chile", "Peru", "Ecuador", "Paraguay",
+        "Bolivia", "Venezuela", "South Africa", "Zambia", "Zimbabwe",
+        "Angola", "Cape Verde", "Guinea", "Togo", "Benin", "Mozambique",
+        "Tanzania", "Uganda", "Kenya", "Ethiopia", "Sudan",
+        "Croatia", "Slovakia", "Slovenia", "Bosnia", "Montenegro",
+        "Albania", "North Macedonia", "Northern Ireland", "Republic of Ireland",
+        "Fiji", "Samoa", "Papua New Guinea", "Tahiti", "Solomon Islands",
+        "India", "China", "Thailand", "Vietnam", "Indonesia", "Malaysia",
+        "Philippines", "Singapore", "Iraq", "Syria", "Lebanon", "Jordan",
+        "Oman", "Bahrain", "Kuwait", "UAE", "Yemen", "Palestine",
+        "Korea DPR", "Hong Kong", "Chinese Taipei", "Myanmar", "Cambodia",
+        "Laos", "Mongolia", "Bhutan", "Nepal", "Bangladesh", "Sri Lanka",
+        "Maldives", "Brunei", "Timor-Leste", "Macau", "Guam",
+    ]
+    known_lower = {t.lower(): t for t in known_teams}
+
+    data = {"comp": "FIFA World Cup 2026", "sh": 0, "sa": 0, "home": "", "away": ""}
+
+    # Extract teams: support "TeamA vs TeamB", "TeamA v TeamB", "TeamA - TeamB"
+    team_delimiters = [r"\s+vs\.?\s+", r"\sv\.\s+", r"\s+&\s+", r"\s+and\s+", r"\s*[-–]\s*"]
+    for delim in team_delimiters:
+        m = re.search(rf"(\w[\w\s]*?){delim}(\w[\w\s]*?)$", text_lower)
+        if m:
+            a, b = m.group(1).strip(), m.group(2).strip()
+            if a and b:
+                data["home"] = known_lower.get(a, a.title())
+                data["away"] = known_lower.get(b, b.title())
+                break
+
+    # Also try to extract teams from score context: "TeamA 1-0 TeamB"
+    if not data["home"] or not data["away"]:
+        m = re.match(r"([a-zA-Z\s]+?)\s+(\d+)\s*[-–]\s*(\d+)\s+([a-zA-Z\s]+)", text_lower)
+        if m:
+            a, sh, sa, b = m.group(1).strip(), m.group(2), m.group(3), m.group(4).strip()
+            data["home"] = known_lower.get(a, a.title())
+            data["away"] = known_lower.get(b, b.title())
+            data["sh"] = int(sh)
+            data["sa"] = int(sa)
+
+    # If still no teams, try matching known team names in text
+    if not data["home"] or not data["away"]:
+        found = [known_lower[t] for t in known_lower if t in text_lower]
+        if len(found) >= 2:
+            data["home"] = found[0]
+            data["away"] = found[1]
+        elif len(found) == 1:
+            data["home"] = found[0]
+            data["away"] = "Opponent"
+
+    # Fallback defaults
+    if not data["home"]: data["home"] = "Team 1"
+    if not data["away"]: data["away"] = "Team 2"
+
+    # Score
+    if "sh" not in data or (data["sh"] == 0 and data["sa"] == 0):
+        score_match = re.search(r"(\d+)\s*[-–]\s*(\d+)", text_lower)
+        if score_match:
+            data["sh"] = int(score_match.group(1))
+            data["sa"] = int(score_match.group(2))
+
+    # Minute
+    min_match = re.search(r"(\d+)\s*(?:'|min|th\s*minute|minute)", text_lower)
+    data["minute"] = min_match.group(1) if min_match else "?"
+
+    # Determine event type
+    if any(k in text_lower for k in ["goal", "scored", "scores", "goalll"]):
         event = "goal"
-        scorer_match = re.search(r"by\s+([a-zA-Z\s]+?)(?=\s+\d+|'|$)", text)
-        data["scorer"] = scorer_match.group(1).strip() if scorer_match else "Unknown"
-        data["minute"] = minute
-        assist_match = re.search(r"assist\s+(?:by\s+)?([a-zA-Z\s]+?)(?=\s+|$)", text)
-        data["assist"] = assist_match.group(1).strip() if assist_match else None
-        data["team_side"] = "home" if "portugal" in text or "home" in text else "away"
-    elif any(k in text for k in ["card", "yellow", "red"]):
+        # Scorer: try "by X", "X scores", "X goal", or capitalized name near minute
+        scorer = None
+        scorer_patterns = [
+            r"(?:by|scored\s*by|goal\s*by)\s+([A-Za-z\s.]+?)(?:\s+\d+|'|\s*$)",
+            r"([A-Z][a-z]+(?:\s[A-Z][a-z]+)?)\s+(?:scores|goal|with|makes)",
+            r"([A-Z][a-z]+(?:\s[A-Z][a-z]+)?)\s+\d+",
+        ]
+        for pat in scorer_patterns:
+            m = re.search(pat, original)
+            if m:
+                cand = m.group(1).strip()
+                if len(cand) > 2 and cand.lower() not in ["the", "and", "for", "vs", "goal"]:
+                    scorer = cand
+                    break
+        # Fallback: take capitalized word before the score
+        if not scorer or scorer == "Unknown":
+            m = re.search(r"([A-Z][a-z]+)\s+\d+\s*[-–]\s*\d+", original)
+            if m:
+                scorer = m.group(1).strip()
+        data["scorer"] = scorer if scorer else "Unknown"
+        data["minute"] = data.get("minute", "?")
+        assist_match = re.search(r"(?:assist|assisted\s*by)\s+([A-Za-z\s.]+?)(?:\s*$|\s+\d+)", original)
+        data["assist"] = assist_match.group(1).strip().title() if assist_match else None
+        # Determine which team scored based on who has the lead
+        if data["sh"] > data["sa"]:
+            data["team_side"] = "home"
+        elif data["sa"] > data["sh"]:
+            data["team_side"] = "away"
+        else:
+            data["team_side"] = "home"
+
+    elif any(k in text_lower for k in ["card", "yellow", "red", "booking"]):
         event = "card"
-        data["card_type"] = "RED" if "red" in text else "YELLOW"
-        player_match = re.search(r"([a-zA-Z\s]+?)\s+(?:gets|received|card)", text)
+        data["card_type"] = "RED" if "red" in text_lower else "YELLOW"
+        # Player name: often capitalized, before "card"/"gets"/"received"/"booking"
+        player_match = re.search(r"([A-Z][a-z]+(?:\s[A-Z][a-z]+)?)\s+(?:gets|received|shown|card|booking|yellow|red)", original)
         data["player"] = player_match.group(1).strip() if player_match else "Unknown"
-        data["minute"] = minute
-        data["team"] = "Portugal" if "portugal" in text else "Congo DR"
-    elif any(k in text for k in ["sub", "substitution", "off", "on"]):
+        data["minute"] = data.get("minute", "?")
+        data["team"] = data["home"]
+
+    elif any(k in text_lower for k in ["sub", "substitution", "replaced", "comes on", "comes off"]):
         event = "sub"
-        data["minute"] = minute
-        data["team"] = "Portugal" if "portugal" in text else "Congo DR"
-        off_match = re.search(r"([a-zA-Z\s]+?)\s+off", text)
-        on_match = re.search(r"([a-zA-Z\s]+?)\s+on", text)
+        data["minute"] = data.get("minute", "?")
+        data["team"] = data["home"]
+        off_match = re.search(r"([A-Z][a-z]+(?:\s[A-Z][a-z]+)?)\s+off", original)
+        on_match = re.search(r"([A-Z][a-z]+(?:\s[A-Z][a-z]+)?)\s+on", original)
         data["off"] = off_match.group(1).strip() if off_match else "Unknown"
         data["on"] = on_match.group(1).strip() if on_match else "Unknown"
-    elif "half time" in text: event = "halftime"; data["scorers"] = " la la"
-    elif "full time" in text: event = "fulltime"; data["scorers"] = " la la"
-    elif "live" in text or "start" in text: event = "live"; data["time"] = "Now"
-    else: event = "summary"; data["events"] = text
+
+    elif re.search(r"half\s*time|halftime|half-time", text_lower):
+        event = "halftime"
+        data["scorers"] = ""
+
+    elif re.search(r"full\s*time|fulltime|full-time|final\s*score|match\s*ended", text_lower):
+        event = "fulltime"
+        data["scorers"] = ""
+
+    elif any(k in text_lower for k in ["live", "kickoff", "starts", "underway", "1st half", "first half"]):
+        event = "live"
+        data["time"] = "Now"
+
+    elif re.search(r"2nd half|second half", text_lower):
+        event = "secondhalf"
+
+    else:
+        event = "summary"
+        data["events"] = original
+
     return event, data
 
-@app.route("/")
-def index(): return render_template("index.html")
+@app.route("/api/parse", methods=["POST"])
+def parse_text():
+    text = request.json.get("text", "")
+    event, data = smart_parse(text)
+    return jsonify({"event": event, "data": data})
 
-@app.route("/api/preview")
-def preview():
-    data = request.args.to_dict()
-    event = data.get("event", "")
-    if not event: return jsonify({"error": "No event type specified"}), 400
-    try:
-        img = make_event_image(event, data)
-        return send_from_directory(".", img)
-    except Exception as e: return jsonify({"error": str(e)}), 500
+@app.route("/")
+def index(): return render_template("dashboard.html")
+
+def make_caption(event, data):
+    home = data.get("home", "Team 1")
+    away = data.get("away", "Team 2")
+    sh = data.get("sh", 0)
+    sa = data.get("sa", 0)
+    captions = {
+        "goal": f"GOAL! {data.get('scorer', '?')} {data.get('minute', '?')}'\n{home} {sh} - {sa} {away}" + (f"\nAssist: {data.get('assist')}" if data.get('assist') else ""),
+        "card": f"{'RED' if data.get('card_type')=='RED' else 'YELLOW'} CARD\n{data.get('player')} ({data.get('team')})",
+        "sub": f"SUBSTITUTION\n{data.get('off')} OFF, {data.get('on')} ON ({data.get('team')})",
+        "live": f"The match is underway! {home} vs {away}",
+        "halftime": f"HALF TIME\n{home} {sh} - {sa} {away}",
+        "secondhalf": f"SECOND HALF\n{home} {sh} - {sa} {away}",
+        "fulltime": f"FULL TIME\n{home} {sh} - {sa} {away}",
+        "summary": f"MATCH SUMMARY\n{home} {sh} - {sa} {away}",
+    }
+    return captions.get(event, "Football update!")
 
 @app.route("/api/post", methods=["POST"])
 def post_event():
@@ -118,17 +245,16 @@ def post_event():
         event = data.get("event", "")
     if not event: return jsonify({"error": "No event detected"}), 400
     try:
-        from .image_generator import (live_image, goal_image, card_image, sub_image, halftime_image, secondhalf_image, fulltime_image, summary_image, schedule_image)
-        home, away, comp = data.get("home", "Portugal"), data.get("away", "Congo DR"), data.get("comp", "FIFA World Cup 2026")
+        home, away, comp = data.get("home", "Team 1"), data.get("away", "Team 2"), data.get("comp", "FIFA World Cup 2026")
         if event == "live": img = live_image(home, away, comp, data.get("time", ""))
         elif event == "goal": img = goal_image(home, away, int(data.get("sh",0)), int(data.get("sa",0)), data.get("scorer", "Unknown"), data.get("minute", "?"), data.get("assist"), comp)
         elif event == "card": img = card_image(data.get("team", home), data.get("player", "Unknown"), data.get("minute", "?"), data.get("card_type", "YELLOW"), comp)
         elif event == "sub": img = sub_image(data.get("team", home), data.get("off", "Unknown"), data.get("on", "Unknown"), data.get("minute", "?"), comp)
         elif event == "halftime": img = halftime_image(home, away, int(data.get("sh",0)), int(data.get("sa",0)), data.get("scorers", ""), comp)
-        elif event == "fulltime": img = fulltime_image(home, away, int(data.get("sh",0)), int(data.get("sa",0)), [data.get("scorers", "")], comp)
-        elif event == "summary": img = summary_image(home, away, int(data.get("sh",0)), int(data.get("sa",0)), [data.get("events", "")], comp)
+        elif event == "fulltime": img = fulltime_image(home, away, int(data.get("sh",0)), int(data.get("sa",0)), data.get("scorers", "").split(",") if data.get("scorers") else [], comp)
+        elif event == "summary": img = summary_image(home, away, int(data.get("sh",0)), int(data.get("sa",0)), [data.get("events", "")] if data.get("events") else [], comp)
         else: return jsonify({"error": "Unknown event"}), 400
-        caption = f"{event.upper()} Update: {data.get('scorer', '')} {data.get('minute', '')}' {home} {data.get('sh',0)}-{data.get('sa',0)} {away}"
+        caption = make_caption(event, data)
         result = post_to_fb(img, caption)
         video_result = None
         if include_video and "error" not in result:
@@ -144,6 +270,10 @@ def post_event():
         if "error" in result: return jsonify({"error": result["error"], "caption": caption}), 500
         return jsonify({"success": True, "post_id": result.get("post_id"), "caption": caption, "fb_url": f"https://www.facebook.com/{PAGE_ID}/posts/{result.get('post_id','').split('_')[-1] if '_' in result.get('post_id','') else result.get('post_id')}", "video_posted": video_result is not None})
     except Exception as e: return jsonify({"error": str(e)}), 500
+
+@app.route("/post", methods=["POST"])
+def post_form():
+    return post_event()
 
 @app.route("/api/history")
 def history(): return jsonify(load_history())
