@@ -1,5 +1,6 @@
 from PIL import Image, ImageDraw, ImageFont, ImageFilter
 import os, requests, io
+from math import sin, pi
 
 FONT_BOLD = None
 FONT_REGULAR = None
@@ -81,6 +82,17 @@ def _get_color(team):
     h = hashlib.md5(t.encode()).hexdigest()
     return (int(h[:2], 16) + 40, int(h[2:4], 16) + 40, int(h[4:6], 16) + 40)
 
+def _wave_flag(img, amplitude=6, period=50):
+    w, h = img.size
+    result = Image.new("RGBA", (w, h))
+    for x in range(w):
+        offset = int(amplitude * sin(2 * pi * x / period))
+        for y in range(h):
+            sy = min(max(y + offset, 0), h - 1)
+            if x < w and sy < h:
+                result.putpixel((x, y), img.getpixel((x % w, sy % h)))
+    return result
+
 def get_flag(team, size=(120, 120)):
     t = team.lower().strip()
     code = COUNTRY_CODES.get(t)
@@ -93,9 +105,10 @@ def get_flag(team, size=(120, 120)):
     try:
         r = requests.get(url, timeout=3)
         if r.status_code == 200:
-            img = Image.open(io.BytesIO(r.content)).convert("RGBA").resize(size, Image.LANCZOS)
-            FLAG_CACHE[url] = img
-            return img
+            raw = Image.open(io.BytesIO(r.content)).convert("RGBA").resize(size, Image.LANCZOS)
+            waved = _wave_flag(raw, amplitude=5, period=45)
+            FLAG_CACHE[url] = waved
+            return waved
     except: pass
     return None
 
@@ -176,34 +189,43 @@ def _draw_pro_base(label, color):
 
 def _draw_match_center(draw, img, home, away, score_text, y_pos, accent=None):
     W = 1200
-    # Center backdrop panel
-    draw.rounded_rectangle([(80, y_pos - 40), (1120, y_pos + 320)], 24, fill=(18, 18, 32), outline=(255, 255, 255, 20), width=2)
+    bg_top = y_pos - 40
+    bg_bot = y_pos + 380
+    draw.rounded_rectangle([(80, bg_top), (1120, bg_bot)], 24, fill=(18, 18, 32), outline=(255, 255, 255, 20), width=2)
     
-    # Team badges
-    bh = get_team_badge(home, (160, 160)) or get_flag(home, (160, 100))
-    ba = get_team_badge(away, (160, 160)) or get_flag(away, (160, 100))
+    # Flags (always shown, large) — behind badges
+    fh = get_flag(home, (200, 140))
+    fa = get_flag(away, (200, 140))
+    flag_y = y_pos + 10
+    if fh:
+        img.paste(fh, (280 - 100, flag_y), fh if fh.mode == "RGBA" else None)
+    if fa:
+        img.paste(fa, (920 - 100, flag_y), fa if fa.mode == "RGBA" else None)
     
-    # Paste badges
-    mask_circle = Image.new("L", (160, 160), 0)
-    ImageDraw.Draw(mask_circle).ellipse([(0, 0), (160, 160)], fill=255)
+    # Team badges overlaid on flags
+    bh = get_team_badge(home, (120, 120))
+    ba = get_team_badge(away, (120, 120))
+    mask_circle = Image.new("L", (120, 120), 0)
+    ImageDraw.Draw(mask_circle).ellipse([(0, 0), (120, 120)], fill=255)
+    badge_y = y_pos + 60
     
     if bh:
-        img.paste(bh.resize((160, 160)), (280 - 80, y_pos + 20), mask_circle if bh.mode == "RGBA" else None)
+        img.paste(bh, (280 - 60, badge_y), mask_circle if bh.mode == "RGBA" else None)
     else:
         c = _get_color(home)
-        draw.ellipse([(280 - 80, y_pos + 20), (280 + 80, y_pos + 180)], fill=c)
-        _cx(draw, home[:3].upper(), _f(44, bold=True), y_pos + 70, 280, "white")
+        draw.ellipse([(280 - 60, badge_y), (280 + 60, badge_y + 120)], fill=c)
+        _cx(draw, home[:3].upper(), _f(36, bold=True), badge_y + 45, 280, "white")
         
     if ba:
-        img.paste(ba.resize((160, 160)), (920 - 80, y_pos + 20), mask_circle if ba.mode == "RGBA" else None)
+        img.paste(ba, (920 - 60, badge_y), mask_circle if ba.mode == "RGBA" else None)
     else:
         c = _get_color(away)
-        draw.ellipse([(920 - 80, y_pos + 20), (920 + 80, y_pos + 180)], fill=c)
-        _cx(draw, away[:3].upper(), _f(44, bold=True), y_pos + 70, 920, "white")
+        draw.ellipse([(920 - 60, badge_y), (920 + 60, badge_y + 120)], fill=c)
+        _cx(draw, away[:3].upper(), _f(36, bold=True), badge_y + 45, 920, "white")
         
-    # Names below badges
-    _cx(draw, home.upper(), _f(34, bold=True), y_pos + 210, 280, "white")
-    _cx(draw, away.upper(), _f(34, bold=True), y_pos + 210, 920, "white")
+    # Names below flags
+    _cx(draw, home.upper(), _f(36, bold=True), y_pos + 170, 280, "white")
+    _cx(draw, away.upper(), _f(36, bold=True), y_pos + 170, 920, "white")
     
     # Score or VS text
     if score_text:
@@ -235,30 +257,29 @@ def goal_image(home, away, sh, sa, scorer, minute, assist, comp):
     _draw_match_center(draw, img, home, away, f"{sh} - {sa}", 180, EVENT_COLORS["GOAL"])
     
     cx = 600
-    y_player = 600
+    y_player = 620
+    p_size = 280
     
-    # Substantial descriptive card panel for scorer
-    draw.rounded_rectangle([(250, y_player - 40), (950, y_player + 340)], 24, fill=(18, 18, 32), outline=EVENT_COLORS["GOAL"], width=2)
+    draw.rounded_rectangle([(200, y_player - 30), (1000, y_player + 380)], 24, fill=(18, 18, 32), outline=EVENT_COLORS["GOAL"], width=3)
     
-    pimg = get_player_img(scorer, (200, 200))
+    pimg = get_player_img(scorer, (p_size, p_size))
     if pimg:
-        mask = Image.new("L", (200, 200), 0)
-        ImageDraw.Draw(mask).ellipse([(0, 0), (200, 200)], fill=255)
-        # Glowing border around photo
-        draw.ellipse([(cx - 105, y_player - 5), (cx + 105, y_player + 205)], outline=EVENT_COLORS["GOAL"], width=4)
-        img.paste(pimg, (cx - 100, y_player), mask)
+        mask = Image.new("L", (p_size, p_size), 0)
+        ImageDraw.Draw(mask).ellipse([(0, 0), (p_size, p_size)], fill=255)
+        draw.ellipse([(cx - p_size//2 - 5, y_player - 5), (cx + p_size//2 + 5, y_player + p_size + 5)], outline=EVENT_COLORS["GOAL"], width=5)
+        img.paste(pimg, (cx - p_size//2, y_player), mask)
     else:
-        draw.ellipse([(cx - 100, y_player), (cx + 100, y_player + 200)], fill=EVENT_COLORS["GOAL"])
-        _cx(draw, scorer[:2].upper(), _f(64, bold=True), y_player + 50, cx, (14, 14, 28))
+        draw.ellipse([(cx - p_size//2, y_player), (cx + p_size//2, y_player + p_size)], fill=EVENT_COLORS["GOAL"])
+        _cx(draw, scorer[:2].upper(), _f(80, bold=True), y_player + p_size//2 - 30, cx, (14, 14, 28))
         
-    _cx(draw, f"{scorer.upper()}", _f(48, bold=True), y_player + 220, cx, EVENT_COLORS["GOAL"])
-    _cx(draw, f"MINUTE: {minute}'", _f(30, bold=True), y_player + 285, cx, "white")
+    _cx(draw, f"{scorer.upper()}", _f(52, bold=True), y_player + p_size + 25, cx, EVENT_COLORS["GOAL"])
+    _cx(draw, f"MINUTE: {minute}'", _f(34, bold=True), y_player + p_size + 95, cx, "white")
     
     if assist:
-        _cx(draw, f"ASSIST BY: {assist.upper()}", _f(24), y_player + 345, cx, "lightgray")
+        _cx(draw, f"ASSIST BY: {assist.upper()}", _f(26), y_player + p_size + 155, cx, "lightgray")
         
     if comp:
-        _cx(draw, comp.upper(), _f(24, bold=True), 1080, 600, "gray")
+        _cx(draw, comp.upper(), _f(24, bold=True), 1120, 600, "gray")
         
     path = "post_image.png"
     img.save(path)
@@ -282,20 +303,23 @@ def card_image(team, player, minute, card_type, comp):
     card_w, card_h = 140, 200
     draw.rounded_rectangle([(cx - card_w//2, y_pos + 60), (cx + card_w//2, y_pos + 60 + card_h)], 15, fill=color, outline="white", width=3)
     
-    # Player Photo Circle
-    pimg = get_player_img(player, (200, 200))
+    # Player Photo Circle — bigger
+    p_size = 240
+    pimg = get_player_img(player, (p_size, p_size))
+    px = cx - p_size//2
+    py = y_pos + 300
     if pimg:
-        mask = Image.new("L", (200, 200), 0)
-        ImageDraw.Draw(mask).ellipse([(0, 0), (200, 200)], fill=255)
-        draw.ellipse([(cx - 105, y_pos + 315), (cx + 105, y_pos + 525)], outline=color, width=4)
-        img.paste(pimg, (cx - 100, y_pos + 320), mask)
+        mask = Image.new("L", (p_size, p_size), 0)
+        ImageDraw.Draw(mask).ellipse([(0, 0), (p_size, p_size)], fill=255)
+        draw.ellipse([(px - 5, py - 5), (px + p_size + 5, py + p_size + 5)], outline=color, width=5)
+        img.paste(pimg, (px, py), mask)
     else:
         c = _get_color(team)
-        draw.ellipse([(cx - 100, y_pos + 320), (cx + 100, y_pos + 520)], fill=c)
-        _cx(draw, team[:3].upper(), _f(48, bold=True), y_pos + 380, cx, "white")
+        draw.ellipse([(px, py), (px + p_size, py + p_size)], fill=c)
+        _cx(draw, team[:3].upper(), _f(56, bold=True), py + p_size//2 - 20, cx, "white")
         
-    _cx(draw, player.upper(), _f(42, bold=True), y_pos + 540, cx, "white")
-    _cx(draw, team.upper(), _f(26, bold=True), y_pos + 595, cx, "gray")
+    _cx(draw, player.upper(), _f(46, bold=True), py + p_size + 15, cx, "white")
+    _cx(draw, team.upper(), _f(28, bold=True), py + p_size + 75, cx, "gray")
     
     if comp:
         _cx(draw, comp.upper(), _f(24), 1080, 600, "gray")
@@ -313,31 +337,34 @@ def sub_image(team, player_off, player_on, minute, comp):
     # Dynamic graphical cards
     y_start = 330
     
+    s_size = 220
     # Left Card (OFF) - Red Glow
-    draw.rounded_rectangle([(150, y_start), (550, y_start + 450)], 24, fill=(26, 18, 20), outline=(255, 80, 80), width=3)
-    _cx(draw, "PLAYER OUT", _f(28, bold=True), y_start + 30, 350, (255, 80, 80))
-    p_off_img = get_player_img(player_off, (180, 180))
+    draw.rounded_rectangle([(100, y_start), (550, y_start + 520)], 24, fill=(26, 18, 20), outline=(255, 80, 80), width=3)
+    _cx(draw, "PLAYER OUT", _f(28, bold=True), y_start + 25, 325, (255, 80, 80))
+    pox, poy = 325 - s_size//2, y_start + 60
+    p_off_img = get_player_img(player_off, (s_size, s_size))
     if p_off_img:
-        mask = Image.new("L", (180, 180), 0)
-        ImageDraw.Draw(mask).ellipse([(0, 0), (180, 180)], fill=255)
-        img.paste(p_off_img, (350 - 90, y_start + 100), mask)
+        mask = Image.new("L", (s_size, s_size), 0)
+        ImageDraw.Draw(mask).ellipse([(0, 0), (s_size, s_size)], fill=255)
+        img.paste(p_off_img, (pox, poy), mask)
     else:
-        draw.ellipse([(350 - 60, y_start + 120), (350 + 60, y_start + 240)], fill=(255, 80, 80))
-    _cx(draw, player_off.upper(), _f(28, bold=True), y_start + 320, 350, "white")
-    _cx(draw, "▼", _f(48), y_start + 370, 350, (255, 80, 80))
+        draw.ellipse([(pox, poy), (pox + s_size, poy + s_size)], fill=(255, 80, 80))
+    _cx(draw, player_off.upper(), _f(30, bold=True), poy + s_size + 20, 325, "white")
+    _cx(draw, "▼", _f(52), poy + s_size + 80, 325, (255, 80, 80))
     
     # Right Card (ON) - Green Glow
-    draw.rounded_rectangle([(650, y_start), (1050, y_start + 450)], 24, fill=(18, 26, 20), outline=(80, 255, 80), width=3)
-    _cx(draw, "PLAYER IN", _f(28, bold=True), y_start + 30, 850, (80, 255, 80))
-    p_on_img = get_player_img(player_on, (180, 180))
+    draw.rounded_rectangle([(650, y_start), (1100, y_start + 520)], 24, fill=(18, 26, 20), outline=(80, 255, 80), width=3)
+    _cx(draw, "PLAYER IN", _f(28, bold=True), y_start + 25, 875, (80, 255, 80))
+    pix, piy = 875 - s_size//2, y_start + 60
+    p_on_img = get_player_img(player_on, (s_size, s_size))
     if p_on_img:
-        mask = Image.new("L", (180, 180), 0)
-        ImageDraw.Draw(mask).ellipse([(0, 0), (180, 180)], fill=255)
-        img.paste(p_on_img, (850 - 90, y_start + 100), mask)
+        mask = Image.new("L", (s_size, s_size), 0)
+        ImageDraw.Draw(mask).ellipse([(0, 0), (s_size, s_size)], fill=255)
+        img.paste(p_on_img, (pix, piy), mask)
     else:
-        draw.ellipse([(850 - 60, y_start + 120), (850 + 60, y_start + 240)], fill=(80, 255, 80))
-    _cx(draw, player_on.upper(), _f(28, bold=True), y_start + 320, 850, "white")
-    _cx(draw, "▲", _f(48), y_start + 370, 850, (80, 255, 80))
+        draw.ellipse([(pix, piy), (pix + s_size, piy + s_size)], fill=(80, 255, 80))
+    _cx(draw, player_on.upper(), _f(30, bold=True), piy + s_size + 20, 875, "white")
+    _cx(draw, "▲", _f(52), piy + s_size + 80, 875, (80, 255, 80))
     
     if comp:
         _cx(draw, comp.upper(), _f(24, bold=True), 1080, 600, "gray")
