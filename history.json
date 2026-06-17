@@ -1,0 +1,36 @@
+[
+  {
+    "event": "goal",
+    "caption": "GOAL! Ronaldo 45'\nBrazil 2 - 1 Argentina",
+    "data": {
+      "away": "Argentina",
+      "comp": "WC",
+      "event": "goal",
+      "home": "Brazil",
+      "minute": "45",
+      "sa": 1,
+      "scorer": "Ronaldo",
+      "sh": 2
+    },
+    "result": {
+      "error": "Invalid OAuth access token - Cannot parse access token"
+    },
+    "video_result": null,
+    "timestamp": "2026-06-18T00:16:49.989190"
+  },
+  {
+    "event": "live",
+    "caption": "The match is underway! Brazil vs Argentina",
+    "data": {
+      "away": "Argentina",
+      "comp": "WC",
+      "event": "live",
+      "home": "Brazil"
+    },
+    "result": {
+      "error": "Invalid OAuth access token - Cannot parse access token"
+    },
+    "video_result": null,
+    "timestamp": "2026-06-18T00:14:33.810134"
+  }
+]

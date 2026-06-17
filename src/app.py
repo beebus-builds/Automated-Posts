@@ -1,5 +1,5 @@
-import os, json, requests, re
-from flask import Flask, request, jsonify, render_template
+import os, json, requests, re, tempfile, shutil
+from flask import Flask, request, jsonify, render_template, send_file
 from dotenv import load_dotenv
 from .image_generator import (
     live_image, goal_image, card_image, sub_image,
@@ -233,6 +233,43 @@ def make_caption(event, data):
     }
     return captions.get(event, "Football update!")
 
+def make_event_image(event, data):
+    home = data.get("home", "Team 1")
+    away = data.get("away", "Team 2")
+    comp = data.get("comp", "FIFA World Cup 2026")
+    if event == "live": return live_image(home, away, comp, data.get("time", ""))
+    elif event == "goal": return goal_image(home, away, int(data.get("sh",0)), int(data.get("sa",0)), data.get("scorer", "Unknown"), data.get("minute", "?"), data.get("assist"), comp)
+    elif event == "card": return card_image(data.get("team", home), data.get("player", "Unknown"), data.get("minute", "?"), data.get("card_type", "YELLOW"), comp)
+    elif event == "sub": return sub_image(data.get("team", home), data.get("off", "Unknown"), data.get("on", "Unknown"), data.get("minute", "?"), comp)
+    elif event == "halftime": return halftime_image(home, away, int(data.get("sh",0)), int(data.get("sa",0)), data.get("scorers", ""), comp)
+    elif event == "secondhalf": return secondhalf_image(home, away, int(data.get("sh",0)), int(data.get("sa",0)), comp)
+    elif event == "fulltime": return fulltime_image(home, away, int(data.get("sh",0)), int(data.get("sa",0)), data.get("scorers", "").split(",") if data.get("scorers") else [], comp)
+    elif event == "summary": return summary_image(home, away, int(data.get("sh",0)), int(data.get("sa",0)), [data.get("events", "")] if data.get("events") else [], comp)
+    return None
+
+@app.route("/api/preview", methods=["POST"])
+def preview():
+    data = request.get_json()
+    if not data: return jsonify({"error": "No data"}), 400
+    event = data.get("event", "")
+    if not event: return jsonify({"error": "No event"}), 400
+    try:
+        img_path = make_event_image(event, data)
+        if not img_path: return jsonify({"error": "Unknown event"}), 400
+        caption = make_caption(event, data)
+        out = tempfile.NamedTemporaryFile(suffix=".png", delete=False)
+        shutil.copy2(img_path, out.name)
+        os.remove(img_path)
+        return jsonify({"preview_url": f"/api/image/{os.path.basename(out.name)}", "caption": caption, "event": event})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/api/image/<name>")
+def serve_preview(name):
+    path = os.path.join(tempfile.gettempdir(), name)
+    if not os.path.exists(path): return jsonify({"error": "not found"}), 404
+    return send_file(path, mimetype="image/png")
+
 @app.route("/api/post", methods=["POST"])
 def post_event():
     data = request.get_json() or request.form.to_dict()
@@ -245,15 +282,8 @@ def post_event():
         event = data.get("event", "")
     if not event: return jsonify({"error": "No event detected"}), 400
     try:
-        home, away, comp = data.get("home", "Team 1"), data.get("away", "Team 2"), data.get("comp", "FIFA World Cup 2026")
-        if event == "live": img = live_image(home, away, comp, data.get("time", ""))
-        elif event == "goal": img = goal_image(home, away, int(data.get("sh",0)), int(data.get("sa",0)), data.get("scorer", "Unknown"), data.get("minute", "?"), data.get("assist"), comp)
-        elif event == "card": img = card_image(data.get("team", home), data.get("player", "Unknown"), data.get("minute", "?"), data.get("card_type", "YELLOW"), comp)
-        elif event == "sub": img = sub_image(data.get("team", home), data.get("off", "Unknown"), data.get("on", "Unknown"), data.get("minute", "?"), comp)
-        elif event == "halftime": img = halftime_image(home, away, int(data.get("sh",0)), int(data.get("sa",0)), data.get("scorers", ""), comp)
-        elif event == "fulltime": img = fulltime_image(home, away, int(data.get("sh",0)), int(data.get("sa",0)), data.get("scorers", "").split(",") if data.get("scorers") else [], comp)
-        elif event == "summary": img = summary_image(home, away, int(data.get("sh",0)), int(data.get("sa",0)), [data.get("events", "")] if data.get("events") else [], comp)
-        else: return jsonify({"error": "Unknown event"}), 400
+        img = make_event_image(event, data)
+        if not img: return jsonify({"error": "Unknown event"}), 400
         caption = make_caption(event, data)
         result = post_to_fb(img, caption)
         video_result = None
