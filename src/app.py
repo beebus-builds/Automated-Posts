@@ -162,8 +162,22 @@ def index():
     return render_template("index.html")
 
 
+@app.route("/api/preview")
+def preview():
+    data = request.args.to_dict()
+    event = data.get("event", "")
+    if not event:
+        return jsonify({"error": "No event type specified"}), 400
+    try:
+        img = make_event_image(event, data)
+        return send_from_directory(".", img)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
 @app.route("/manifest.json")
 def manifest():
+
     return send_from_directory("static", "manifest.json")
 
 
