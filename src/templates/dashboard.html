@@ -209,8 +209,14 @@ function refreshPreview() {
 
 async function doRefresh() {
   const form = document.getElementById('postForm');
-  const fd = new FormData(form);
-  const data = Object.fromEntries(fd.entries());
+  const data = { event: document.getElementById('eventSelect').value, home: document.getElementById('home').value, away: document.getElementById('away').value, comp: document.getElementById('comp').value };
+  const all = form.querySelectorAll('input, select, textarea');
+  all.forEach(el => {
+    if (!el.name || data[el.name] !== undefined) return;
+    let p = el.parentElement;
+    while (p) { if (p.classList && p.classList.contains('hidden')) return; p = p.parentElement; }
+    data[el.name] = el.value;
+  });
   if (!data.event) return;
 
   const empty = document.getElementById('previewEmpty');
@@ -256,8 +262,14 @@ document.getElementById('postForm').addEventListener('submit', async function(e)
   result.style.display = 'none';
   result.className = '';
 
-  const fd = new FormData(this);
-  const data = Object.fromEntries(fd.entries());
+  const all = this.querySelectorAll('input, select, textarea');
+  const data = {};
+  all.forEach(el => {
+    if (!el.name) return;
+    let p = el.parentElement;
+    while (p) { if (p.classList && p.classList.contains('hidden')) return; p = p.parentElement; }
+    data[el.name] = el.value;
+  });
 
   try {
     const res = await fetch('/api/post', {
