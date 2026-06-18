@@ -3,5 +3,3 @@ gunicorn
 requests
 python-dotenv
 Pillow
-playwright
-jinja2
