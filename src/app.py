@@ -1,5 +1,5 @@
 import os, json, requests, re, shutil
-from flask import Flask, request, jsonify, render_template, send_file, send_from_directory
+from flask import Flask, request, jsonify, render_template, send_file
 from dotenv import load_dotenv
 from .image_generator import (
     draw_goal_card, draw_yellow_card, draw_red_card, draw_sub_card,
@@ -232,33 +232,34 @@ def make_caption(event, data):
     }
     return captions.get(event, "Football update!")
 
-def make_event_image(event, data):
+def make_event_image(event, data, output_path=None):
     home = data.get("home", "Team 1")
     away = data.get("away", "Team 2")
     comp = data.get("comp", "World Cup 2026")
     sh = data.get("sh", "0")
     sa = data.get("sa", "0")
+    kw = {} if output_path is None else {"output_path": output_path}
     if event == "goal":
-        return draw_goal_card(data.get("scorer", "Unknown"), data.get("minute", "?"), home, None)
+        return draw_goal_card(data.get("scorer", "Unknown"), data.get("minute", "?"), home, None, **kw)
     if event == "card":
         card_type = data.get("card_type", "YELLOW")
         player = data.get("player") or data.get("scorer", "Unknown")
         if card_type == "RED":
-            return draw_red_card(player, home, data.get("minute", "?"), None)
-        return draw_yellow_card(player, home, data.get("minute", "?"), None)
+            return draw_red_card(player, home, data.get("minute", "?"), None, **kw)
+        return draw_yellow_card(player, home, data.get("minute", "?"), None, **kw)
     if event == "sub":
         return draw_sub_card(
             data.get("player_off") or data.get("off", "Unknown"),
             data.get("player_on") or data.get("on", "Unknown"),
-            home, data.get("minute", "?"))
+            home, data.get("minute", "?"), **kw)
     if event == "halftime":
-        return draw_halftime_image(home, away, sh, sa, comp)
+        return draw_halftime_image(home, away, sh, sa, comp, **kw)
     if event == "fulltime":
-        return draw_fulltime_image(home, away, sh, sa, comp)
+        return draw_fulltime_image(home, away, sh, sa, comp, **kw)
     if event == "live":
-        return draw_live_image(home, away, comp)
+        return draw_live_image(home, away, comp, **kw)
     if event in ("secondhalf", "summary"):
-        return draw_fulltime_image(home, away, sh, sa, comp)
+        return draw_fulltime_image(home, away, sh, sa, comp, **kw)
     return None
 
 _ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -275,10 +276,9 @@ def preview():
         img_path = make_event_image(event, data)
         if not img_path: return jsonify({"error": "Unknown event"}), 400
         caption = make_caption(event, data)
-        name = "preview_" + os.path.basename(img_path)
+        name = "pv_" + os.path.basename(img_path)
         dst = os.path.join(PREVIEW_DIR, name)
-        shutil.copy2(img_path, dst)
-        os.remove(img_path)
+        shutil.move(img_path, dst)
         return jsonify({"preview_url": "/api/image/" + name, "caption": caption, "event": event})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
@@ -305,7 +305,9 @@ def post_event():
         img = make_event_image(event, data)
         if not img: return jsonify({"error": "Unknown event"}), 400
         caption = make_caption(event, data)
+        print(f"[post] posting {img} with caption: {caption[:50]}...")
         result = post_to_fb(img, caption)
+        print(f"[post] result: {result}")
         video_result = None
         if include_video and "error" not in result:
             vid_path = img.replace(".png", ".mp4")

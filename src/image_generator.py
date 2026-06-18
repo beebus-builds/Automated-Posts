@@ -1,10 +1,13 @@
 from PIL import Image, ImageDraw, ImageFont, ImageFilter
-import os, requests, io
+import os, requests, io, tempfile, time
 from math import sin, pi, cos
 import random
 
-_OUTPUT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-_OUTPUT_FILE = os.path.join(_OUTPUT_DIR, "post_image.png")
+_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+def _out_path(name=None):
+    ts = str(int(time.time() * 1000))
+    return os.path.join(_ROOT, name or f"post_{ts}.png")
 
 # --- BRAND CONSTANTS ---
 COLORS = {
@@ -184,7 +187,8 @@ def _minute_badge(draw, minute, cx, y, color=COLORS["RED"], size=100):
 
 # === TEMPLATES ===
 
-def draw_goal_card(scorer, minute, team_name, player_img=None, flag_img=None):
+def draw_goal_card(scorer, minute, team_name, player_img=None, flag_img=None, output_path=None):
+    output_path = output_path or _out_path()
     img = Image.new("RGBA", (W, H), COLORS["NAVY_DARK"])
     draw = ImageDraw.Draw(img)
 
@@ -234,11 +238,12 @@ def draw_goal_card(scorer, minute, team_name, player_img=None, flag_img=None):
     _team_color_bar(draw, H - 8, COLORS["RED"])
 
     img = img.convert("RGB")
-    img.save(_OUTPUT_FILE)
-    return _OUTPUT_FILE
+    img.save(output_path)
+    return output_path
 
 
-def draw_yellow_card(player, team, minute, player_img=None):
+def draw_yellow_card(player, team, minute, player_img=None, output_path=None):
+    output_path = output_path or _out_path()
     img = Image.new("RGBA", (W, H), COLORS["NAVY_DARK"])
     draw = ImageDraw.Draw(img)
 
@@ -283,11 +288,12 @@ def draw_yellow_card(player, team, minute, player_img=None):
     _team_color_bar(draw, H - 8, COLORS["YELLOW"])
 
     img = img.convert("RGB")
-    img.save(_OUTPUT_FILE)
-    return _OUTPUT_FILE
+    img.save(output_path)
+    return output_path
 
 
-def draw_red_card(player, team, minute, player_img=None):
+def draw_red_card(player, team, minute, player_img=None, output_path=None):
+    output_path = output_path or _out_path()
     img = Image.new("RGBA", (W, H), (10, 5, 5))
     draw = ImageDraw.Draw(img)
 
@@ -338,11 +344,12 @@ def draw_red_card(player, team, minute, player_img=None):
     _team_color_bar(draw, H - 8, COLORS["RED"])
 
     img = img.convert("RGB")
-    img.save(_OUTPUT_FILE)
-    return _OUTPUT_FILE
+    img.save(output_path)
+    return output_path
 
 
-def draw_sub_card(player_off, player_on, team, minute):
+def draw_sub_card(player_off, player_on, team, minute, output_path=None):
+    output_path = output_path or _out_path()
     img = Image.new("RGBA", (W, H), COLORS["NAVY_DARK"])
     draw = ImageDraw.Draw(img)
 
@@ -389,11 +396,12 @@ def draw_sub_card(player_off, player_on, team, minute):
     _team_color_bar(draw, H - 8, COLORS["WHITE"])
 
     img = img.convert("RGB")
-    img.save(_OUTPUT_FILE)
-    return _OUTPUT_FILE
+    img.save(output_path)
+    return output_path
 
 
-def draw_halftime_image(home, away, sh, sa, comp):
+def draw_halftime_image(home, away, sh, sa, comp, output_path=None):
+    output_path = output_path or _out_path()
     img = Image.new("RGBA", (W, H), COLORS["NAVY_DARK"])
     draw = ImageDraw.Draw(img)
 
@@ -439,11 +447,12 @@ def draw_halftime_image(home, away, sh, sa, comp):
     _team_color_bar(draw, H - 8, COLORS["RED"])
 
     img = img.convert("RGB")
-    img.save(_OUTPUT_FILE)
-    return _OUTPUT_FILE
+    img.save(output_path)
+    return output_path
 
 
-def draw_fulltime_image(home, away, sh, sa, comp):
+def draw_fulltime_image(home, away, sh, sa, comp, output_path=None):
+    output_path = output_path or _out_path()
     img = Image.new("RGBA", (W, H), COLORS["NAVY_DARK"])
     draw = ImageDraw.Draw(img)
 
@@ -485,15 +494,16 @@ def draw_fulltime_image(home, away, sh, sa, comp):
     _team_color_bar(draw, H - 8, COLORS["GOLD"])
 
     img = img.convert("RGB")
-    img.save(_OUTPUT_FILE)
-    return _OUTPUT_FILE
+    img.save(output_path)
+    return output_path
 
 
-def draw_summary_image(home, away, events, comp):
-    return draw_fulltime_image(home, away, 0, 0, comp)
+def draw_summary_image(home, away, events, comp, output_path=None):
+    return draw_fulltime_image(home, away, 0, 0, comp, output_path)
 
 
-def draw_live_image(home, away, comp):
+def draw_live_image(home, away, comp, output_path=None):
+    output_path = output_path or _out_path()
     img = Image.new("RGBA", (W, H), COLORS["NAVY_DARK"])
     draw = ImageDraw.Draw(img)
 
@@ -530,5 +540,5 @@ def draw_live_image(home, away, comp):
     _team_color_bar(draw, H - 8, COLORS["RED"])
 
     img = img.convert("RGB")
-    img.save(_OUTPUT_FILE)
-    return _OUTPUT_FILE
+    img.save(output_path)
+    return output_path
