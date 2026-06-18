@@ -2,9 +2,8 @@ import os, json, requests, re, tempfile, shutil
 from flask import Flask, request, jsonify, render_template, send_file
 from dotenv import load_dotenv
 from .image_generator import (
-    live_image, goal_image, card_image, sub_image,
-    halftime_image, secondhalf_image, fulltime_image,
-    summary_image
+    draw_goal_card, draw_yellow_card, draw_red_card, draw_sub_card,
+    # Add other draw functions as they are implemented
 )
 
 load_dotenv()
@@ -237,14 +236,8 @@ def make_event_image(event, data):
     home = data.get("home", "Team 1")
     away = data.get("away", "Team 2")
     comp = data.get("comp", "FIFA World Cup 2026")
-    if event == "live": return live_image(home, away, comp, data.get("time", ""))
-    elif event == "goal": return goal_image(home, away, int(data.get("sh",0)), int(data.get("sa",0)), data.get("scorer", "Unknown"), data.get("minute", "?"), data.get("assist"), comp)
-    elif event == "card": return card_image(data.get("team", home), data.get("player", "Unknown"), data.get("minute", "?"), data.get("card_type", "YELLOW"), comp)
-    elif event == "sub": return sub_image(data.get("team", home), data.get("off", "Unknown"), data.get("on", "Unknown"), data.get("minute", "?"), comp)
-    elif event == "halftime": return halftime_image(home, away, int(data.get("sh",0)), int(data.get("sa",0)), data.get("scorers", ""), comp)
-    elif event == "secondhalf": return secondhalf_image(home, away, int(data.get("sh",0)), int(data.get("sa",0)), comp)
-    elif event == "fulltime": return fulltime_image(home, away, int(data.get("sh",0)), int(data.get("sa",0)), data.get("scorers", "").split(",") if data.get("scorers") else [], comp)
-    elif event == "summary": return summary_image(home, away, int(data.get("sh",0)), int(data.get("sa",0)), [data.get("events", "")] if data.get("events") else [], comp)
+    if event == "goal": return draw_goal_card(data.get("scorer", "Unknown"), data.get("minute", "?"), home, None)
+    # Temporary placeholders to prevent crashes while I implement the rest:
     return None
 
 @app.route("/api/preview", methods=["POST"])
