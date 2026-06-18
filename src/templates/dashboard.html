@@ -3,303 +3,85 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Match Poster</title>
+<title>Match Day | Production Dashboard</title>
 <style>
+:root {
+    --bg: #0f172a; --card: #1e293b; --text: #f8fafc;
+    --accent: #38bdf8; --red: #e11d48; --yellow: #fbbf24;
+}
 * { margin: 0; padding: 0; box-sizing: border-box; }
-body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #080812; color: #fff; min-height: 100vh; }
-.app { display: flex; min-height: 100vh; }
+body { font-family: 'Inter', system-ui, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
 
-.sidebar { width: 420px; min-width: 420px; background: #0c0c1e; border-right: 1px solid #1a1a3a; padding: 24px; overflow-y: auto; height: 100vh; }
-.main { flex: 1; display: flex; flex-direction: column; align-items: center; padding: 40px; overflow-y: auto; }
+.app { display: flex; height: 100vh; overflow: hidden; }
+.sidebar { width: 450px; background: #020617; border-right: 1px solid #334155; padding: 24px; overflow-y: auto; }
+.main { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 40px; }
 
-h1 { font-size: 20px; font-weight: 800; color: #40a8ff; margin-bottom: 4px; }
-h1 small { font-size: 12px; color: #666; font-weight: 400; display: block; }
-.subtitle { color: #666; font-size: 12px; margin-bottom: 20px; }
+h1 { font-size: 24px; font-weight: 800; margin-bottom: 24px; color: var(--accent); }
+label { display: block; font-size: 11px; color: #94a3b8; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.1em; }
+input, select, textarea { width: 100%; padding: 12px; background: var(--card); border: 1px solid #334155; border-radius: 8px; color: #fff; font-size: 14px; margin-bottom: 16px; }
 
-label { display: block; font-size: 11px; color: #666; margin-bottom: 3px; margin-top: 12px; text-transform: uppercase; letter-spacing: 0.5px; }
-input, select, textarea { width: 100%; padding: 10px 12px; background: #12122a; border: 1px solid #1e1e3e; border-radius: 8px; color: #fff; font-size: 14px; outline: none; transition: border 0.2s; }
-input:focus, select:focus, textarea:focus { border-color: #40a8ff; }
-select { appearance: auto; cursor: pointer; }
-select option { background: #12122a; color: #fff; }
-.row { display: flex; gap: 10px; }
-.row > * { flex: 1; }
-.hidden { display: none !important; }
+.quick-actions { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 24px; }
+.quick-btn { padding: 10px; border-radius: 6px; border: 1px solid #334155; background: var(--card); color: #cbd5e1; cursor: pointer; font-size: 12px; }
+.quick-btn.active { border-color: var(--accent); background: #0369a122; color: var(--accent); }
 
-.quick-actions { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 16px; }
-.quick-btn { padding: 6px 14px; border-radius: 6px; border: 1px solid #1e1e3e; background: #12122a; color: #ccc; cursor: pointer; font-size: 12px; font-weight: 600; transition: all 0.15s; }
-.quick-btn:hover { border-color: #40a8ff; background: #1a1a3a; color: #fff; }
-.quick-btn.active { border-color: #40a8ff; background: #40a8ff18; color: #40a8ff; }
+.preview-frame { width: 400px; height: 400px; border-radius: 20px; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5); overflow: hidden; background: #000; position: relative; }
+.preview-img { width: 100%; height: 100%; object-fit: cover; }
+.preview-overlay { position: absolute; bottom: 0; left: 0; width: 100%; padding: 20px; background: linear-gradient(transparent, rgba(0,0,0,0.8)); color: white; }
 
-.btn { width: 100%; padding: 14px; background: linear-gradient(135deg, #40a8ff, #2060cc); border: none; border-radius: 10px; color: #fff; font-size: 16px; font-weight: bold; cursor: pointer; margin-top: 16px; transition: all 0.15s; }
-.btn:hover { transform: translateY(-1px); box-shadow: 0 6px 20px #40a8ff33; }
-.btn:active { transform: translateY(0); }
-.btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; box-shadow: none; }
-
-#result { margin-top: 12px; padding: 12px; border-radius: 8px; display: none; font-size: 13px; }
-#result.success { background: #0a2a1a; border: 1px solid #20cc60; display: block; }
-#result.error { background: #2a0a0a; border: 1px solid #cc4040; display: block; }
-
-.preview-section { width: 100%; max-width: 600px; text-align: center; }
-.preview-frame { background: #0c0c1e; border-radius: 16px; border: 2px solid #1a1a3a; overflow: hidden; box-shadow: 0 20px 60px rgba(0,0,0,0.6); }
-.preview-img { width: 100%; display: block; aspect-ratio: 1/1; object-fit: cover; background: #0a0a12; }
-.preview-caption { padding: 16px 20px; text-align: left; border-top: 1px solid #1a1a3a; }
-.preview-caption .event-badge { display: inline-block; padding: 3px 10px; border-radius: 4px; font-size: 11px; font-weight: 800; letter-spacing: 1px; margin-bottom: 8px; }
-.preview-caption .caption-text { font-size: 14px; color: #ccc; line-height: 1.5; white-space: pre-wrap; }
-.preview-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 400px; color: #333; font-size: 14px; }
-.preview-empty svg { width: 60px; height: 60px; margin-bottom: 12px; opacity: 0.3; }
-.preview-label { font-size: 11px; color: #444; text-transform: uppercase; letter-spacing: 2px; margin-bottom: 8px; }
-
-@keyframes spin { to { transform: rotate(360deg); } }
-.spinner { display: inline-block; width: 16px; height: 16px; border: 2px solid #ffffff44; border-top-color: #fff; border-radius: 50%; animation: spin 0.6s linear infinite; vertical-align: middle; margin-right: 6px; }
-
-.fb-btn { display: inline-flex; align-items: center; gap: 6px; margin-top: 8px; padding: 8px 16px; background: #1877f2; color: #fff; text-decoration: none; border-radius: 6px; font-weight: 600; font-size: 13px; }
-.fb-btn:hover { background: #166fe5; }
+.btn { width: 100%; padding: 16px; background: var(--accent); border: none; border-radius: 8px; color: #000; font-weight: 800; cursor: pointer; font-size: 16px; }
 </style>
 </head>
 <body>
 <div class="app">
   <div class="sidebar">
-    <h1>Match Poster <small>Facebook Automation</small></h1>
-    <div class="subtitle">Fill in the match details and preview before posting</div>
-
-    <div class="quick-actions">
-      <button class="quick-btn" onclick="setEvent('live')">Live</button>
-      <button class="quick-btn" onclick="setEvent('goal')">Goal</button>
-      <button class="quick-btn" onclick="setEvent('card')">Card</button>
-      <button class="quick-btn" onclick="setEvent('sub')">Sub</button>
-      <button class="quick-btn" onclick="setEvent('halftime')">HT</button>
-      <button class="quick-btn" onclick="setEvent('fulltime')">FT</button>
-      <button class="quick-btn" onclick="setEvent('summary')">Summary</button>
-    </div>
-
+    <h1>MATCH DAY <small style="display:block; color:#64748b; font-size:12px;">PRODUCTION DASHBOARD</small></h1>
     <form id="postForm">
-      <label>Event Type</label>
-      <select name="event" id="eventSelect" onchange="toggleFields(); refreshPreview()">
-        <option value="live">Match Start / Live</option>
-        <option value="goal">Goal</option>
-        <option value="card">Card</option>
-        <option value="sub">Substitution</option>
-        <option value="halftime">Half Time</option>
-        <option value="secondhalf">Second Half</option>
-        <option value="fulltime">Full Time</option>
-        <option value="summary">Match Summary</option>
-      </select>
-
-      <div class="row">
-        <div><label>Home Team</label><input name="home" id="home" placeholder="e.g. Portugal" oninput="refreshPreview()"></div>
-        <div><label>Away Team</label><input name="away" id="away" placeholder="e.g. Congo DR" oninput="refreshPreview()"></div>
+      <div class="quick-actions" id="eventButtons">
+        <button type="button" class="quick-btn" onclick="setEvent('goal')">Goal</button>
+        <button type="button" class="quick-btn" onclick="setEvent('card')">Card</button>
+        <button type="button" class="quick-btn" onclick="setEvent('sub')">Sub</button>
+        <button type="button" class="quick-btn" onclick="setEvent('fulltime')">FT</button>
       </div>
-
-      <label>Competition</label>
-      <input name="comp" id="comp" placeholder="e.g. FIFA World Cup 2026" value="FIFA World Cup 2026" oninput="refreshPreview()">
-
-      <div id="fields-live" class="event-fields">
-        <label>Kickoff Time</label><input name="time" placeholder="e.g. 17:00 UTC" oninput="refreshPreview()">
+      <input type="hidden" name="event" id="eventSelect" value="goal">
+      <div class="row" style="display:flex; gap:10px;">
+        <div style="flex:1"><label>Home</label><input name="home" oninput="refreshPreview()"></div>
+        <div style="flex:1"><label>Away</label><input name="away" oninput="refreshPreview()"></div>
       </div>
-
-      <div id="fields-goal" class="event-fields hidden">
-        <div class="row">
-          <div><label>Home Score</label><input name="sh" type="number" min="0" value="0" oninput="refreshPreview()"></div>
-          <div><label>Away Score</label><input name="sa" type="number" min="0" value="0" oninput="refreshPreview()"></div>
-        </div>
-        <label>Scorer</label><input name="scorer" placeholder="e.g. Cristiano Ronaldo" oninput="refreshPreview()">
-        <div class="row">
-          <div><label>Minute</label><input name="minute" placeholder="e.g. 23" oninput="refreshPreview()"></div>
-          <div><label>Side</label><select name="team_side" onchange="refreshPreview()"><option value="home">Home</option><option value="away">Away</option></select></div>
-        </div>
-        <label>Assist (optional)</label><input name="assist" placeholder="e.g. Bruno Fernandes" oninput="refreshPreview()">
-      </div>
-
-      <div id="fields-card" class="event-fields hidden">
-        <label>Team</label><input name="team" placeholder="e.g. Portugal" oninput="refreshPreview()">
-        <label>Player</label><input name="player" placeholder="e.g. Pepe" oninput="refreshPreview()">
-        <div class="row">
-          <div><label>Minute</label><input name="minute" placeholder="e.g. 67" oninput="refreshPreview()"></div>
-          <div><label>Type</label><select name="card_type" onchange="refreshPreview()"><option value="YELLOW">Yellow</option><option value="RED">Red</option></select></div>
-        </div>
-      </div>
-
-      <div id="fields-sub" class="event-fields hidden">
-        <label>Team</label><input name="team" placeholder="e.g. Portugal" oninput="refreshPreview()">
-        <label>Player Off</label><input name="off" placeholder="e.g. Joao Felix" oninput="refreshPreview()">
-        <label>Player On</label><input name="on" placeholder="e.g. Diogo Jota" oninput="refreshPreview()">
-        <label>Minute</label><input name="minute" placeholder="e.g. 72" oninput="refreshPreview()">
-      </div>
-
-      <div id="fields-halftime" class="event-fields hidden">
-        <div class="row">
-          <div><label>Home Score</label><input name="sh" type="number" min="0" value="0" oninput="refreshPreview()"></div>
-          <div><label>Away Score</label><input name="sa" type="number" min="0" value="0" oninput="refreshPreview()"></div>
-        </div>
-        <label>Scorers</label><input name="scorers" placeholder="e.g. Ronaldo 23', Messi 45+2'" oninput="refreshPreview()">
-      </div>
-
-      <div id="fields-secondhalf" class="event-fields hidden">
-        <div class="row">
-          <div><label>Home Score</label><input name="sh" type="number" min="0" value="0" oninput="refreshPreview()"></div>
-          <div><label>Away Score</label><input name="sa" type="number" min="0" value="0" oninput="refreshPreview()"></div>
-        </div>
-      </div>
-
-      <div id="fields-fulltime" class="event-fields hidden">
-        <div class="row">
-          <div><label>Home Score</label><input name="sh" type="number" min="0" value="0" oninput="refreshPreview()"></div>
-          <div><label>Away Score</label><input name="sa" type="number" min="0" value="0" oninput="refreshPreview()"></div>
-        </div>
-        <label>Scorers</label><input name="scorers" placeholder="e.g. Ronaldo 23' pen, Leao 67'" oninput="refreshPreview()">
-      </div>
-
-      <div id="fields-summary" class="event-fields hidden">
-        <div class="row">
-          <div><label>Home Score</label><input name="sh" type="number" min="0" value="0" oninput="refreshPreview()"></div>
-          <div><label>Away Score</label><input name="sa" type="number" min="0" value="0" oninput="refreshPreview()"></div>
-        </div>
-        <label>Events</label><textarea name="events" rows="3" placeholder="Goal: Ronaldo 23'" oninput="refreshPreview()"></textarea>
-      </div>
-
-      <button type="submit" class="btn" id="submitBtn">
-        <span class="spinner" id="spinner" style="display:none"></span>
-        <span id="btnText">Post to Facebook</span>
-      </button>
+      <label>Scorer/Player</label><input name="scorer" oninput="refreshPreview()">
+      <label>Minute</label><input name="minute" oninput="refreshPreview()">
+      <button type="submit" class="btn" id="submitBtn">POST TO FACEBOOK</button>
     </form>
-
-    <div id="result"></div>
   </div>
-
   <div class="main">
-    <div class="preview-section">
-      <div class="preview-label">Facebook Post Preview</div>
-      <div class="preview-frame">
-        <div id="previewEmpty" class="preview-empty">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/></svg>
-          Fill in the form to see a preview
-        </div>
-        <img id="previewImage" class="preview-img hidden" src="" alt="Preview">
-        <div class="preview-caption" id="previewCaption" style="display:none">
-          <div class="event-badge" id="previewBadge">GOAL</div>
-          <div class="caption-text" id="previewCaptionText"></div>
-        </div>
+    <div class="preview-frame">
+      <img id="previewImage" class="preview-img" src="" alt="Preview">
+      <div class="preview-overlay">
+        <div id="previewCaption">Waiting...</div>
       </div>
     </div>
   </div>
 </div>
-
 <script>
-let previewTimer = null;
-
-function setEvent(type) {
-  document.getElementById('eventSelect').value = type;
-  toggleFields();
-  document.querySelectorAll('.quick-btn').forEach(b => b.classList.remove('active'));
-  event.target.classList.add('active');
-  refreshPreview();
+function setEvent(e) { 
+    document.getElementById('eventSelect').value = e;
+    document.querySelectorAll('.quick-btn').forEach(b => b.classList.toggle('active', b.textContent.toLowerCase() === e.substring(0,3)));
+    refreshPreview();
 }
-
-function toggleFields() {
-  const val = document.getElementById('eventSelect').value;
-  document.querySelectorAll('.event-fields').forEach(el => el.classList.add('hidden'));
-  const target = document.getElementById('fields-' + val);
-  if (target) target.classList.remove('hidden');
-}
-
-function refreshPreview() {
-  clearTimeout(previewTimer);
-  previewTimer = setTimeout(doRefresh, 400);
-}
-
+let timer;
+function refreshPreview() { clearTimeout(timer); timer = setTimeout(doRefresh, 300); }
 async function doRefresh() {
-  const form = document.getElementById('postForm');
-  const data = { event: document.getElementById('eventSelect').value, home: document.getElementById('home').value, away: document.getElementById('away').value, comp: document.getElementById('comp').value };
-  const all = form.querySelectorAll('input, select, textarea');
-  all.forEach(el => {
-    if (!el.name || data[el.name] !== undefined) return;
-    let p = el.parentElement;
-    while (p) { if (p.classList && p.classList.contains('hidden')) return; p = p.parentElement; }
-    data[el.name] = el.value;
-  });
-  if (!data.event) return;
-
-  const empty = document.getElementById('previewEmpty');
-  const img = document.getElementById('previewImage');
-  const cap = document.getElementById('previewCaption');
-  const badge = document.getElementById('previewBadge');
-  const text = document.getElementById('previewCaptionText');
-
-  try {
-    const res = await fetch('/api/preview', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data)
-    });
+    const data = Object.fromEntries(new FormData(document.getElementById('postForm')));
+    const res = await fetch('/api/preview', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(data)});
     const r = await res.json();
-    if (r.preview_url) {
-      empty.classList.add('hidden');
-      img.classList.remove('hidden');
-      img.src = r.preview_url + '?t=' + Date.now();
-      cap.style.display = 'block';
-      badge.textContent = data.event.toUpperCase();
-      const colors = {live:'#288cff',goal:'#ffd700',card:'#ff4444',sub:'#8c50cc',halftime:'#ffa500',secondhalf:'#ffa500',fulltime:'#32c832',summary:'#505078'};
-      badge.style.background = (colors[data.event] || '#40a8ff') + '22';
-      badge.style.color = colors[data.event] || '#40a8ff';
-      badge.style.border = '1px solid ' + (colors[data.event] || '#40a8ff');
-      text.textContent = r.caption || '';
+    if(r.preview_url) {
+        document.getElementById('previewImage').src = r.preview_url + '?t=' + Date.now();
+        document.getElementById('previewCaption').textContent = r.caption;
     }
-  } catch(e) {
-    // preview unavailable, keep current
-  }
 }
-
-document.getElementById('postForm').addEventListener('submit', async function(e) {
-  e.preventDefault();
-  const btn = document.getElementById('submitBtn');
-  const spinner = document.getElementById('spinner');
-  const btnText = document.getElementById('btnText');
-  const result = document.getElementById('result');
-
-  btn.disabled = true;
-  spinner.style.display = 'inline-block';
-  btnText.textContent = 'Posting...';
-  result.style.display = 'none';
-  result.className = '';
-
-  const all = this.querySelectorAll('input, select, textarea');
-  const data = {};
-  all.forEach(el => {
-    if (!el.name) return;
-    let p = el.parentElement;
-    while (p) { if (p.classList && p.classList.contains('hidden')) return; p = p.parentElement; }
-    data[el.name] = el.value;
-  });
-
-  try {
-    const res = await fetch('/api/post', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data)
-    });
-    const r = await res.json();
-
-    if (r.success) {
-      let html = '<strong>Posted to Facebook!</strong><br><span style="color:#aaa;font-size:12px;">' + (r.caption || '') + '</span>';
-      if (r.fb_url) html += '<br><a class="fb-btn" href="' + r.fb_url + '" target="_blank"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg> View on Facebook</a>';
-      result.className = 'success';
-      result.innerHTML = html;
-      doRefresh();
-    } else {
-      result.className = 'error';
-      result.innerHTML = '<strong>Error:</strong> ' + (r.error || 'Unknown');
-    }
-  } catch (err) {
-    result.className = 'error';
-    result.innerHTML = '<strong>Network error:</strong> ' + err.message;
-  }
-
-  btn.disabled = false;
-  spinner.style.display = 'none';
-  btnText.textContent = 'Post to Facebook';
+document.getElementById('postForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    alert('Posting...');
 });
-
-toggleFields();
 </script>
 </body>
 </html>
