@@ -2,3 +2,7 @@
 __pycache__/
 *.pyc
 post_image.png
+
+fonts/
+previews/
+post_image.png

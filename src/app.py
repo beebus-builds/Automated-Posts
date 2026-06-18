@@ -1,5 +1,5 @@
-import os, json, requests, re, tempfile, shutil
-from flask import Flask, request, jsonify, render_template, send_file
+import os, json, requests, re, shutil
+from flask import Flask, request, jsonify, render_template, send_file, send_from_directory
 from dotenv import load_dotenv
 from .image_generator import (
     draw_goal_card, draw_yellow_card, draw_red_card, draw_sub_card,
@@ -261,6 +261,9 @@ def make_event_image(event, data):
         return draw_fulltime_image(home, away, sh, sa, comp)
     return None
 
+PREVIEW_DIR = "previews"
+os.makedirs(PREVIEW_DIR, exist_ok=True)
+
 @app.route("/api/preview", methods=["POST"])
 def preview():
     data = request.get_json()
@@ -271,18 +274,17 @@ def preview():
         img_path = make_event_image(event, data)
         if not img_path: return jsonify({"error": "Unknown event"}), 400
         caption = make_caption(event, data)
-        out = tempfile.NamedTemporaryFile(suffix=".png", delete=False)
-        shutil.copy2(img_path, out.name)
+        name = f"preview_{os.path.basename(img_path)}"
+        dst = os.path.join(PREVIEW_DIR, name)
+        shutil.copy2(img_path, dst)
         os.remove(img_path)
-        return jsonify({"preview_url": f"/api/image/{os.path.basename(out.name)}", "caption": caption, "event": event})
+        return jsonify({"preview_url": f"/api/image/{name}", "caption": caption, "event": event})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
 @app.route("/api/image/<name>")
 def serve_preview(name):
-    path = os.path.join(tempfile.gettempdir(), name)
-    if not os.path.exists(path): return jsonify({"error": "not found"}), 404
-    return send_file(path, mimetype="image/png")
+    return send_from_directory(PREVIEW_DIR, name)
 
 @app.route("/api/post", methods=["POST"])
 def post_event():
