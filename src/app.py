@@ -3,7 +3,7 @@ from flask import Flask, request, jsonify, render_template, send_file
 from dotenv import load_dotenv
 from .image_generator import (
     draw_goal_card, draw_yellow_card, draw_red_card, draw_sub_card,
-    # Add other draw functions as they are implemented
+    draw_halftime_image, draw_fulltime_image, draw_summary_image, draw_live_image
 )
 
 load_dotenv()
@@ -235,9 +235,21 @@ def make_caption(event, data):
 def make_event_image(event, data):
     home = data.get("home", "Team 1")
     away = data.get("away", "Team 2")
-    comp = data.get("comp", "FIFA World Cup 2026")
-    if event == "goal": return draw_goal_card(data.get("scorer", "Unknown"), data.get("minute", "?"), home, None)
-    # Temporary placeholders to prevent crashes while I implement the rest:
+    comp = data.get("comp", "World Cup 2026")
+    sh = data.get("sh", "0")
+    sa = data.get("sa", "0")
+    if event == "goal":
+        return draw_goal_card(data.get("scorer", "Unknown"), data.get("minute", "?"), home, None)
+    if event == "yellow_card":
+        return draw_yellow_card(data.get("player", "Unknown"), home, data.get("minute", "?"), None)
+    if event == "red_card":
+        return draw_red_card(data.get("player", "Unknown"), home, data.get("minute", "?"), None)
+    if event == "substitution":
+        return draw_sub_card(data.get("player_off", "Unknown"), data.get("player_on", "Unknown"), home, data.get("minute", "?"))
+    if event == "halftime":
+        return draw_halftime_image(home, away, sh, sa, comp)
+    if event == "fulltime":
+        return draw_fulltime_image(home, away, sh, sa, comp)
     return None
 
 @app.route("/api/preview", methods=["POST"])
