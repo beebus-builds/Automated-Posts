@@ -265,9 +265,6 @@ _ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 PREVIEW_DIR = os.path.join(_ROOT, "previews")
 os.makedirs(PREVIEW_DIR, exist_ok=True)
 
-def _img_path(name):
-    return os.path.join(_ROOT, name)
-
 @app.route("/api/preview", methods=["POST"])
 def preview():
     data = request.get_json()
@@ -275,14 +272,14 @@ def preview():
     event = data.get("event", "")
     if not event: return jsonify({"error": "No event"}), 400
     try:
-        img_name = make_event_image(event, data)
-        if not img_name: return jsonify({"error": "Unknown event"}), 400
+        img_path = make_event_image(event, data)
+        if not img_path: return jsonify({"error": "Unknown event"}), 400
         caption = make_caption(event, data)
-        name = f"preview_{img_name}"
+        name = "preview_" + os.path.basename(img_path)
         dst = os.path.join(PREVIEW_DIR, name)
-        shutil.copy2(_img_path(img_name), dst)
-        os.remove(_img_path(img_name))
-        return jsonify({"preview_url": f"/api/image/{name}", "caption": caption, "event": event})
+        shutil.copy2(img_path, dst)
+        os.remove(img_path)
+        return jsonify({"preview_url": "/api/image/" + name, "caption": caption, "event": event})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 

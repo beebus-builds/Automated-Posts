@@ -3,6 +3,9 @@ import os, requests, io
 from math import sin, pi, cos
 import random
 
+_OUTPUT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+_OUTPUT_FILE = os.path.join(_OUTPUT_DIR, "post_image.png")
+
 # --- BRAND CONSTANTS ---
 COLORS = {
     "NAVY": (26, 35, 50),
@@ -231,8 +234,8 @@ def draw_goal_card(scorer, minute, team_name, player_img=None, flag_img=None):
     _team_color_bar(draw, H - 8, COLORS["RED"])
 
     img = img.convert("RGB")
-    img.save("post_image.png")
-    return "post_image.png"
+    img.save(_OUTPUT_FILE)
+    return _OUTPUT_FILE
 
 
 def draw_yellow_card(player, team, minute, player_img=None):
@@ -280,8 +283,8 @@ def draw_yellow_card(player, team, minute, player_img=None):
     _team_color_bar(draw, H - 8, COLORS["YELLOW"])
 
     img = img.convert("RGB")
-    img.save("post_image.png")
-    return "post_image.png"
+    img.save(_OUTPUT_FILE)
+    return _OUTPUT_FILE
 
 
 def draw_red_card(player, team, minute, player_img=None):
@@ -335,8 +338,8 @@ def draw_red_card(player, team, minute, player_img=None):
     _team_color_bar(draw, H - 8, COLORS["RED"])
 
     img = img.convert("RGB")
-    img.save("post_image.png")
-    return "post_image.png"
+    img.save(_OUTPUT_FILE)
+    return _OUTPUT_FILE
 
 
 def draw_sub_card(player_off, player_on, team, minute):
@@ -386,8 +389,8 @@ def draw_sub_card(player_off, player_on, team, minute):
     _team_color_bar(draw, H - 8, COLORS["WHITE"])
 
     img = img.convert("RGB")
-    img.save("post_image.png")
-    return "post_image.png"
+    img.save(_OUTPUT_FILE)
+    return _OUTPUT_FILE
 
 
 def draw_halftime_image(home, away, sh, sa, comp):
@@ -436,8 +439,8 @@ def draw_halftime_image(home, away, sh, sa, comp):
     _team_color_bar(draw, H - 8, COLORS["RED"])
 
     img = img.convert("RGB")
-    img.save("post_image.png")
-    return "post_image.png"
+    img.save(_OUTPUT_FILE)
+    return _OUTPUT_FILE
 
 
 def draw_fulltime_image(home, away, sh, sa, comp):
@@ -482,8 +485,8 @@ def draw_fulltime_image(home, away, sh, sa, comp):
     _team_color_bar(draw, H - 8, COLORS["GOLD"])
 
     img = img.convert("RGB")
-    img.save("post_image.png")
-    return "post_image.png"
+    img.save(_OUTPUT_FILE)
+    return _OUTPUT_FILE
 
 
 def draw_summary_image(home, away, events, comp):
@@ -527,5 +530,5 @@ def draw_live_image(home, away, comp):
     _team_color_bar(draw, H - 8, COLORS["RED"])
 
     img = img.convert("RGB")
-    img.save("post_image.png")
-    return "post_image.png"
+    img.save(_OUTPUT_FILE)
+    return _OUTPUT_FILE
