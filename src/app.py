@@ -223,7 +223,7 @@ def make_caption(event, data):
     captions = {
         "goal": f"GOAL! {data.get('scorer', '?')} {data.get('minute', '?')}'\n{home} {sh} - {sa} {away}" + (f"\nAssist: {data.get('assist')}" if data.get('assist') else ""),
         "card": f"{'RED' if data.get('card_type')=='RED' else 'YELLOW'} CARD\n{data.get('player')} ({data.get('team')})",
-        "sub": f"SUBSTITUTION\n{data.get('off')} OFF, {data.get('on')} ON ({data.get('team')})",
+        "sub": f"SUBSTITUTION\n{data.get('player_off') or data.get('off', '?')} OFF, {data.get('player_on') or data.get('on', '?')} ON ({data.get('team')})",
         "live": f"The match is underway! {home} vs {away}",
         "halftime": f"HALF TIME\n{home} {sh} - {sa} {away}",
         "secondhalf": f"SECOND HALF\n{home} {sh} - {sa} {away}",
@@ -240,15 +240,24 @@ def make_event_image(event, data):
     sa = data.get("sa", "0")
     if event == "goal":
         return draw_goal_card(data.get("scorer", "Unknown"), data.get("minute", "?"), home, None)
-    if event == "yellow_card":
-        return draw_yellow_card(data.get("player", "Unknown"), home, data.get("minute", "?"), None)
-    if event == "red_card":
-        return draw_red_card(data.get("player", "Unknown"), home, data.get("minute", "?"), None)
-    if event == "substitution":
-        return draw_sub_card(data.get("player_off", "Unknown"), data.get("player_on", "Unknown"), home, data.get("minute", "?"))
+    if event == "card":
+        card_type = data.get("card_type", "YELLOW")
+        player = data.get("player") or data.get("scorer", "Unknown")
+        if card_type == "RED":
+            return draw_red_card(player, home, data.get("minute", "?"), None)
+        return draw_yellow_card(player, home, data.get("minute", "?"), None)
+    if event == "sub":
+        return draw_sub_card(
+            data.get("player_off") or data.get("off", "Unknown"),
+            data.get("player_on") or data.get("on", "Unknown"),
+            home, data.get("minute", "?"))
     if event == "halftime":
         return draw_halftime_image(home, away, sh, sa, comp)
     if event == "fulltime":
+        return draw_fulltime_image(home, away, sh, sa, comp)
+    if event == "live":
+        return draw_live_image(home, away, comp)
+    if event in ("secondhalf", "summary"):
         return draw_fulltime_image(home, away, sh, sa, comp)
     return None
 

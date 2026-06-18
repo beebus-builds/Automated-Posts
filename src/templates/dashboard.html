@@ -37,18 +37,26 @@ input, select, textarea { width: 100%; padding: 12px; background: var(--card); b
     <h1>MATCH DAY <small style="display:block; color:#64748b; font-size:12px;">PRODUCTION DASHBOARD</small></h1>
     <form id="postForm">
       <div class="quick-actions" id="eventButtons">
-        <button type="button" class="quick-btn" onclick="setEvent('goal')">Goal</button>
-        <button type="button" class="quick-btn" onclick="setEvent('card')">Card</button>
-        <button type="button" class="quick-btn" onclick="setEvent('sub')">Sub</button>
-        <button type="button" class="quick-btn" onclick="setEvent('fulltime')">FT</button>
+        <button type="button" class="quick-btn active" data-event="goal" onclick="setEvent('goal')">Goal</button>
+        <button type="button" class="quick-btn" data-event="card" onclick="setEvent('card')">Card</button>
+        <button type="button" class="quick-btn" data-event="sub" onclick="setEvent('sub')">Sub</button>
+        <button type="button" class="quick-btn" data-event="halftime" onclick="setEvent('halftime')">HT</button>
+        <button type="button" class="quick-btn" data-event="fulltime" onclick="setEvent('fulltime')">FT</button>
       </div>
       <input type="hidden" name="event" id="eventSelect" value="goal">
       <div class="row" style="display:flex; gap:10px;">
         <div style="flex:1"><label>Home</label><input name="home" oninput="refreshPreview()"></div>
         <div style="flex:1"><label>Away</label><input name="away" oninput="refreshPreview()"></div>
       </div>
-      <label>Scorer/Player</label><input name="scorer" oninput="refreshPreview()">
-      <label>Minute</label><input name="minute" oninput="refreshPreview()">
+      <div class="row" style="display:flex; gap:10px;">
+        <div style="flex:1"><label id="player1Label">Scorer</label><input name="scorer" id="player1Input" oninput="refreshPreview()"></div>
+        <div style="flex:1" id="player2Field"><label>Player In</label><input name="player_on" oninput="refreshPreview()"></div>
+      </div>
+      <div class="row" id="scoreRow" style="display:none; gap:10px;">
+        <div style="flex:1"><label>Home Score</label><input name="sh" id="scoreHome" value="0" oninput="refreshPreview()"></div>
+        <div style="flex:1"><label>Away Score</label><input name="sa" id="scoreAway" value="0" oninput="refreshPreview()"></div>
+      </div>
+      <label>Minute</label><input name="minute" id="minuteField" oninput="refreshPreview()">
       <button type="submit" class="btn" id="submitBtn">POST TO FACEBOOK</button>
     </form>
   </div>
@@ -62,9 +70,34 @@ input, select, textarea { width: 100%; padding: 12px; background: var(--card); b
   </div>
 </div>
 <script>
-function setEvent(e) { 
+function setEvent(e) {
     document.getElementById('eventSelect').value = e;
-    document.querySelectorAll('.quick-btn').forEach(b => b.classList.toggle('active', b.textContent.toLowerCase() === e.substring(0,3)));
+    document.querySelectorAll('.quick-btn').forEach(b => b.classList.toggle('active', b.dataset.event === e));
+    // Toggle form fields based on event type
+    const p1label = document.getElementById('player1Label');
+    const p2field = document.getElementById('player2Field');
+    const scoreRow = document.getElementById('scoreRow');
+    const minuteField = document.getElementById('minuteField');
+    const isScoreEvent = e === 'halftime' || e === 'fulltime';
+    scoreRow.style.display = isScoreEvent ? 'flex' : 'none';
+    minuteField.parentElement.style.display = isScoreEvent ? 'none' : 'block';
+    if (e === 'goal') {
+        p1label.textContent = 'Scorer';
+        p2field.style.display = 'none';
+        document.getElementById('player1Input').name = 'scorer';
+    } else if (e === 'card') {
+        p1label.textContent = 'Player';
+        p2field.style.display = 'none';
+        document.getElementById('player1Input').name = 'player';
+    } else if (e === 'sub') {
+        p1label.textContent = 'Player Off';
+        p2field.style.display = 'block';
+        document.getElementById('player1Input').name = 'player_off';
+    } else {
+        p1label.textContent = 'Home Scorer';
+        p2field.style.display = 'none';
+        document.getElementById('player1Input').name = 'scorer';
+    }
     refreshPreview();
 }
 let timer;
@@ -75,7 +108,10 @@ async function doRefresh() {
     const r = await res.json();
     if(r.preview_url) {
         document.getElementById('previewImage').src = r.preview_url + '?t=' + Date.now();
+        document.getElementById('previewImage').style.display = 'block';
         document.getElementById('previewCaption').textContent = r.caption;
+    } else if(r.error) {
+        document.getElementById('previewCaption').textContent = 'Error: ' + r.error;
     }
 }
 document.getElementById('postForm').addEventListener('submit', async (e) => {
