@@ -15,10 +15,19 @@ COLORS = {
     "GRAY": (128, 128, 128),
     "LIGHT_GRAY": (200, 200, 200),
     "GREEN": (34, 197, 94),
-    "GOLD": (251, 191, 36)
+    "GOLD": (251, 191, 36),
+    "WHITE_30": (255, 255, 255, 30),
+    "WHITE_50": (255, 255, 255, 50),
+    "WHITE_100": (255, 255, 255, 100),
+    "WHITE_180": (255, 255, 255, 180),
+    "BLACK_40": (0, 0, 0, 40),
+    "BLACK_80": (0, 0, 0, 80),
+    "BLACK_150": (0, 0, 0, 150),
 }
 
-# --- DYNAMIC FONT DOWNLOADER ---
+W, H = 1080, 1080
+
+# --- FONTS ---
 FONT_PATHS = {
     "Montserrat-Bold.ttf": "https://github.com/google/fonts/raw/main/ofl/montserrat/Montserrat-Bold.ttf",
     "BebasNeue-Regular.ttf": "https://github.com/google/fonts/raw/main/ofl/bebasneue/BebasNeue-Regular.ttf",
@@ -49,295 +58,474 @@ def _f(name, size):
             pass
     return ImageFont.load_default()
 
-# --- HELPER DRAWING FUNCTIONS ---
+# --- DRAWING UTILITIES ---
 
-def _cx(draw, text, font, y, cx, fill="white", outline=None, outline_w=3):
-    b = draw.textbbox((0, 0), text, font=font)
-    w = b[2] - b[0]
-    tx, ty = cx - w // 2, y
-    if outline:
-        for dx in range(-outline_w, outline_w + 1):
-            for dy in range(-outline_w, outline_w + 1):
-                if dx != 0 or dy != 0:
-                    draw.text((tx + dx, ty + dy), text, fill=outline, font=font)
-    draw.text((tx, ty), text, fill=fill, font=font)
+def _draw_text(draw, text, font, y, cx, fill="white", anchor="mt", letter_spacing=None):
+    """Draw text centered at (cx, y) with optional letter spacing."""
+    if letter_spacing:
+        spacing = letter_spacing
+        total_w = sum(draw.textbbox((0, 0), ch, font=font)[2] - draw.textbbox((0, 0), ch, font=font)[0] for ch in text) + spacing * (len(text) - 1)
+        x_start = cx - total_w // 2
+        for ch in text:
+            if ch == " ":
+                x_start += spacing + (draw.textbbox((0, 0), " ", font=font)[2] - draw.textbbox((0, 0), " ", font=font)[0])
+                continue
+            b = draw.textbbox((0, 0), ch, font=font)
+            ch_w = b[2] - b[0]
+            draw.text((x_start, y), ch, fill=fill, font=font, anchor="mt")
+            x_start += ch_w + spacing
+    else:
+        draw.text((cx, y), text, fill=fill, font=font, anchor=anchor)
 
-def draw_mountain_silhouette(draw, fill_color=(13, 20, 25), height=120):
-    # Procedural peaks across the 1080px width
-    peaks = [
-        (0, 1080),
-        (0, 1080 - height + 20),
-        (150, 1080 - height - 10),
-        (300, 1080 - height + 30),
-        (450, 1080 - height - 30),
-        (600, 1080 - height + 10),
-        (750, 1080 - height - 40),
-        (900, 1080 - height + 20),
-        (1080, 1080 - height - 10),
-        (1080, 1080)
-    ]
-    draw.polygon(peaks, fill=fill_color)
+def _draw_text_with_shadow(draw, text, font, y, cx, fill="white", shadow_color=(0,0,0,150), shadow_offset=(4,4), anchor="mt", letter_spacing=None):
+    """Draw text with a drop shadow."""
+    if letter_spacing:
+        _draw_text(draw, text, font, y + shadow_offset[1], cx + shadow_offset[0], shadow_color, anchor, letter_spacing)
+        _draw_text(draw, text, font, y, cx, fill, anchor, letter_spacing)
+    else:
+        draw.text((cx + shadow_offset[0], y + shadow_offset[1]), text, fill=shadow_color, font=font, anchor=anchor)
+        draw.text((cx, y), text, fill=fill, font=font, anchor=anchor)
 
-def draw_nepal_flag_brushstroke(img, x, y, width=300, height=150, opacity=100):
-    overlay = Image.new("RGBA", (1080, 1080), (0,0,0,0))
+def _draw_glow_text(draw, text, font, y, cx, fill="white", glow_color=(220, 20, 60, 100), glow_radius=12, anchor="mt"):
+    """Draw text with a glow effect behind it."""
+    glow = Image.new("RGBA", (W, H), (0,0,0,0))
+    gd = ImageDraw.Draw(glow)
+    gd.text((cx, y), text, fill=glow_color, font=font, anchor=anchor)
+    glow = glow.filter(ImageFilter.GaussianBlur(radius=glow_radius))
+    draw._image.paste(glow, (0,0), glow)
+    draw.text((cx, y), text, fill=fill, font=font, anchor=anchor)
+
+def _rounded_panel(draw, x1, y1, x2, y2, fill=(255,255,255,40), border=(255,255,255,50), radius=20):
+    """Draw a glass-morphism rounded rectangle panel."""
+    overlay = Image.new("RGBA", (W, H), (0,0,0,0))
     od = ImageDraw.Draw(overlay)
-    # Nepali flag double-triangle shape
-    points = [
-        (x, y),
-        (x + width, y + height // 2),
-        (x + width // 4, y + height // 2),
-        (x + width, y + height),
-        (x, y + height)
-    ]
-    od.polygon(points, fill=(220, 20, 60, opacity), outline=(26, 35, 50, opacity), width=5)
-    # White crescent moon & sun inside the flag triangles
-    od.ellipse([x + 30, y + 30, x + 70, y + 70], fill=(255, 255, 255, opacity))
-    od.ellipse([x + 30, y + 90, x + 70, y + 130], fill=(255, 255, 255, opacity))
-    img.paste(overlay, (0,0), overlay)
+    od.rounded_rectangle([x1, y1, x2, y2], radius=radius, fill=fill, outline=border, width=1)
+    draw._image.paste(overlay, (0,0), overlay)
 
-def draw_soccer_ball(draw, x, y, size=80):
-    cx, cy = x + size//2, y + size//2
-    draw.ellipse([x, y, x+size, y+size], fill=COLORS["WHITE"], outline=COLORS["BLACK"], width=3)
-    # Draw simple pentagonal ball pattern
-    draw.polygon([(cx, cy - size//4), (cx - size//5, cy - size//10), (cx - size//8, cy + size//5), (cx + size//8, cy + size//5), (cx + size//5, cy - size//10)], fill=COLORS["BLACK"])
-    draw.line([(cx, cy - size//4), (cx, cy - size//2)], fill=COLORS["BLACK"], width=2)
-    draw.line([(cx - size//5, cy - size//10), (cx - size//2, cy - size//6)], fill=COLORS["BLACK"], width=2)
-    draw.line([(cx + size//5, cy - size//10), (cx + size//2, cy - size//6)], fill=COLORS["BLACK"], width=2)
-
-def draw_warning_icon(draw, x, y, size=60):
-    draw.ellipse([x, y, x+size, y+size], fill=COLORS["YELLOW"], outline=COLORS["BLACK"], width=2)
-    _cx(draw, "!", _f("Montserrat-Bold.ttf", 40), y + 5, x + size//2, COLORS["BLACK"])
-
-def draw_x_icon(draw, x, y, size=100):
-    # Cross overlay
-    draw.line([(x, y), (x+size, y+size)], fill=(220, 20, 60, 180), width=15)
-    draw.line([(x+size, y), (x, y+size)], fill=(220, 20, 60, 180), width=15)
-
-def get_player_img_clean(name, size=(400, 400)):
-    # Fallback placeholder cutout of a player
-    img = Image.new("RGBA", size, (0,0,0,0))
-    draw = ImageDraw.Draw(img)
-    # Draw elegant silhouette with lighting glow
-    draw.ellipse([size[0]//4, size[1]//5, size[0]*3//4, size[1]*3//5], fill=(56, 189, 248, 255)) # Head
-    draw.polygon([(size[0]//10, size[1]), (size[0]*9//10, size[1]), (size[0]*3//4, size[1]*3//5), (size[0]//4, size[1]*3//5)], fill=(30, 41, 59, 255)) # Shoulders
+def _radial_gradient(size, center_color, edge_color, center=None):
+    """Create a radial gradient image."""
+    Ws, Hs = size
+    cx, cy = center or (Ws // 2, Hs // 2)
+    img = Image.new("RGBA", size, edge_color)
+    max_r = max(Ws, Hs)
+    for r in range(max_r, 0, -1):
+        alpha = int(255 * (1 - r / max_r))
+        if alpha <= 0:
+            continue
+        clr = tuple(min(255, c * 2) for c in center_color) if alpha > 200 else center_color
+        clr_alpha = clr + (alpha // 4,)
+        overlay = Image.new("RGBA", size, (0,0,0,0))
+        od = ImageDraw.Draw(overlay)
+        od.ellipse([cx - r, cy - r, cx + r, cy + r], fill=clr_alpha)
+        img = Image.alpha_composite(img, overlay)
     return img
 
-# --- TEMPLATES ---
+def _noise_texture(size, opacity=15):
+    """Create a subtle grain noise texture."""
+    noise = Image.effect_noise(size, 64).convert("RGBA")
+    pixels = noise.load()
+    for y in range(size[1]):
+        for x in range(size[0]):
+            v = pixels[x, y][0]
+            pixels[x, y] = (v, v, v, opacity)
+    return noise
+
+def _team_color_bar(draw, y, team_color=None):
+    """Draw a thin horizontal team color bar."""
+    color = team_color or COLORS["RED"]
+    draw.rectangle([0, y, W, y + 4], fill=color)
+    draw.rectangle([0, y + 6, W, y + 8], fill=COLORS["WHITE_30"])
+
+def _player_circle(img, player_name, cx, cy, size, border_color=COLORS["WHITE"], border_width=6, glow=True):
+    """Draw a circular player photo placeholder with glow and border."""
+    p_size = size
+    # Glow layer
+    if glow:
+        glow_layer = Image.new("RGBA", (p_size + 40, p_size + 40), (0,0,0,0))
+        gd = ImageDraw.Draw(glow_layer)
+        gd.ellipse([(0,0), (p_size + 40, p_size + 40)], fill=border_color + (40,))
+        glow_layer = glow_layer.filter(ImageFilter.GaussianBlur(radius=20))
+        img.paste(glow_layer, (cx - p_size // 2 - 20, cy - p_size // 2 - 20), glow_layer)
+
+    # Player placeholder - gradient circle with initials
+    player = Image.new("RGBA", (p_size, p_size), (0,0,0,0))
+    pd = ImageDraw.Draw(player)
+    # Gradient fill
+    for r in range(p_size // 2, 0, -1):
+        ratio = r / (p_size // 2)
+        clr = (30 + int(40 * (1 - ratio)), 41 + int(50 * (1 - ratio)), 59 + int(70 * (1 - ratio)))
+        pd.ellipse([p_size // 2 - r, p_size // 2 - r, p_size // 2 + r, p_size // 2 + r], fill=clr)
+    # Initials
+    initials = "".join(w[0].upper() for w in player_name.split()[:2])
+    pd.text((p_size // 2, p_size // 2), initials, fill=COLORS["WHITE_180"], font=_f("Montserrat-Bold.ttf", size // 4), anchor="mm")
+
+    # Mask to circle
+    mask = Image.new("L", (p_size, p_size), 0)
+    ImageDraw.Draw(mask).ellipse([(0,0), (p_size, p_size)], fill=255)
+    img.paste(player, (cx - p_size // 2, cy - p_size // 2), mask)
+
+    # Border
+    draw = ImageDraw.Draw(img)
+    draw.ellipse([cx - p_size // 2, cy - p_size // 2, cx + p_size // 2, cy + p_size // 2],
+                 outline=border_color, width=border_width)
+
+def _minute_badge(draw, minute, cx, y, color=COLORS["RED"], size=100):
+    """Draw a pill-shaped minute badge."""
+    w, h = size * 2, size // 2
+    badge = Image.new("RGBA", (W, H), (0,0,0,0))
+    bd = ImageDraw.Draw(badge)
+    bd.rounded_rectangle([cx - w // 2, y - h // 2, cx + w // 2, y + h // 2],
+                         radius=h // 2, fill=color + (230,), outline=COLORS["WHITE_50"], width=2)
+    draw._image.paste(badge, (0,0), badge)
+    _draw_text(draw, f"{minute}'", _f("BebasNeue-Regular.ttf", size // 2), y, cx, COLORS["WHITE"], anchor="mm")
+
+# === TEMPLATES ===
 
 def draw_goal_card(scorer, minute, team_name, player_img=None, flag_img=None):
-    W, H = 1080, 1080
-    img = Image.new("RGB", (W, H), COLORS["NAVY_DARK"])
+    img = Image.new("RGBA", (W, H), COLORS["NAVY_DARK"])
     draw = ImageDraw.Draw(img)
-    
-    # Background Navy Gradient
-    for i in range(H):
-        ratio = i / H
-        r = int(26 * (1 - ratio) + 13 * ratio)
-        g = int(35 * (1 - ratio) + 20 * ratio)
-        b = int(50 * (1 - ratio) + 25 * ratio)
-        draw.line([(0, i), (W, i)], fill=(r, g, b))
-        
-    # Nepali Flag Brushstroke (Top-right, 40% opacity)
-    draw_nepal_flag_brushstroke(img, 750, 40, width=300, height=150, opacity=100)
-    
-    # "GOAL!" Text (Y=80, 120pt Montserrat Bold, White + Red Outline)
-    _cx(draw, "GOAL!", _f("Montserrat-Bold.ttf", 120), 80, W//2, COLORS["WHITE"], outline=COLORS["RED"], outline_w=4)
-    
-    # Player Photo circle (400x400 circle at Y=250, white border 8px)
-    p_size = 400
-    p_img = player_img if player_img else get_player_img_clean(scorer, (p_size, p_size))
-    mask = Image.new("L", (p_size, p_size), 0)
-    ImageDraw.Draw(mask).ellipse([(0,0), (p_size, p_size)], fill=255)
-    
-    img.paste(p_img.resize((p_size, p_size)), (W//2 - p_size//2, 250), mask)
-    draw.ellipse([(W//2 - p_size//2, 250), (W//2 + p_size//2, 250 + p_size)], outline="white", width=8)
-    
-    # Soccer ball icon overlay bottom-right of photo circle (80x80)
-    draw_soccer_ball(draw, W//2 + p_size//4, 250 + p_size*3//4, size=80)
-    
-    # Player Name (Y=680, Bold, 48pt)
-    _cx(draw, scorer.upper(), _f("Montserrat-Bold.ttf", 48), 680, W//2, COLORS["WHITE"])
-    # Team Name (Y=740, Regular, 32pt)
-    _cx(draw, team_name.upper(), _f("Roboto-Regular.ttf", 32), 740, W//2, COLORS["RED"])
-    
-    # Goal time badge: Red hexagon shape (200x180, Y=820)
-    pts = [(440, 820), (540, 800), (640, 820), (640, 960), (540, 980), (440, 960)]
-    draw.polygon(pts, fill=COLORS["RED"])
-    _cx(draw, f"{minute}'", _f("BebasNeue-Regular.ttf", 56), 855, 540, COLORS["WHITE"])
-    
-    # Mountain silhouette bottom edge
-    draw_mountain_silhouette(draw, height=120)
-    
+
+    # 1. Radial spotlight background
+    gradient = _radial_gradient((W, H), (40, 55, 80), COLORS["NAVY_DARK"], center=(W // 2, 350))
+    img = Image.alpha_composite(img, gradient)
+    draw = ImageDraw.Draw(img)
+
+    # 2. Subtle noise texture
+    noise = _noise_texture((W, H), 8)
+    img = Image.alpha_composite(img, noise)
+    draw = ImageDraw.Draw(img)
+
+    # 3. Team color top accent bar
+    _team_color_bar(draw, 0, COLORS["RED"])
+
+    # 4. "GOAL!" with red glow
+    _draw_glow_text(draw, "GOAL!", _f("Montserrat-Bold.ttf", 140), 120, W // 2,
+                    COLORS["WHITE"], COLORS["RED"], glow_radius=15)
+
+    # 5. Player photo with glow
+    _player_circle(img, scorer, W // 2, 390, 300, COLORS["RED"], 6, glow=True)
+    draw = ImageDraw.Draw(img)
+
+    # 6. Soccer ball icon near photo
+    ball = Image.new("RGBA", (W, H), (0,0,0,0))
+    bd = ImageDraw.Draw(ball)
+    bx, by = W // 2 + 170, 500
+    bd.ellipse([bx - 30, by - 30, bx + 30, by + 30], fill=COLORS["WHITE"], outline=COLORS["BLACK"], width=3)
+    draw._image.paste(ball, (0,0), ball)
+
+    # 7. Minute badge
+    _minute_badge(draw, minute, W // 2, 620, COLORS["RED"], size=120)
+
+    # 8. Player name - large, bold
+    _draw_text_with_shadow(draw, scorer.upper(), _f("Montserrat-Bold.ttf", 52), 710, W // 2,
+                           COLORS["WHITE"], COLORS["BLACK_150"], shadow_offset=(3,3))
+
+    # 9. Team name
+    _draw_text(draw, team_name.upper(), _f("Roboto-Regular.ttf", 28), 770, W // 2, COLORS["RED"])
+
+    # 10. Glass panel for match context at bottom
+    _rounded_panel(draw, 80, 850, 1000, 980, fill=COLORS["WHITE_30"], border=COLORS["WHITE_50"], radius=24)
+    _draw_text(draw, f"{team_name.upper()}  •  World Cup 2026", _f("Roboto-Regular.ttf", 22), 890, W // 2, COLORS["WHITE_180"])
+
+    # 11. Bottom line accent
+    _team_color_bar(draw, H - 8, COLORS["RED"])
+
+    img = img.convert("RGB")
     img.save("post_image.png")
     return "post_image.png"
+
 
 def draw_yellow_card(player, team, minute, player_img=None):
-    W, H = 1080, 1080
-    img = Image.new("RGB", (W, H), (15, 15, 20)) # Dark with glow
+    img = Image.new("RGBA", (W, H), COLORS["NAVY_DARK"])
     draw = ImageDraw.Draw(img)
-    
-    # Top Section: Yellow card graphic slanted Y=60
-    card_points = [(W//2 - 90, 60), (W//2 + 90, 50), (W//2 + 110, 310), (W//2 - 70, 320)]
-    draw.polygon(card_points, fill=COLORS["YELLOW"], outline=COLORS["WHITE"], width=3)
-    
-    # "YELLOW CARD" text below card
-    _cx(draw, "YELLOW CARD", _f("Montserrat-Bold.ttf", 64), 340, W//2, COLORS["YELLOW"])
-    
-    # Player photo centered (350x350, Y=400, yellow border 6px)
-    p_size = 350
-    p_img = player_img if player_img else get_player_img_clean(player, (p_size, p_size))
-    mask = Image.new("L", (p_size, p_size), 0)
-    ImageDraw.Draw(mask).ellipse([(0,0), (p_size, p_size)], fill=255)
-    img.paste(p_img.resize((p_size, p_size)), (W//2 - p_size//2, 400), mask)
-    draw.ellipse([(W//2 - p_size//2, 400), (W//2 + p_size//2, 400 + p_size)], outline=COLORS["YELLOW"], width=6)
-    
-    # Warning icon top-left overlay on photo
-    draw_warning_icon(draw, W//2 - p_size//2 - 10, 400, size=60)
-    
-    # Text
-    _cx(draw, player.upper(), _f("Montserrat-Bold.ttf", 44), 780, W//2, COLORS["WHITE"])
-    _cx(draw, team.upper(), _f("Roboto-Regular.ttf", 30), 840, W//2, COLORS["YELLOW"])
-    _cx(draw, "Unsporting Behavior", _f("Roboto-Regular.ttf", 24), 890, W//2, COLORS["GRAY"])
-    
-    # Match time Y=950
-    _cx(draw, f"{minute}'", _f("BebasNeue-Regular.ttf", 40), 950, W//2, COLORS["WHITE"])
-    
+
+    # Warm radial gradient (yellow tint)
+    gradient = _radial_gradient((W, H), (80, 60, 20), COLORS["NAVY_DARK"], center=(W // 2, 300))
+    img = Image.alpha_composite(img, gradient)
+    draw = ImageDraw.Draw(img)
+
+    noise = _noise_texture((W, H), 8)
+    img = Image.alpha_composite(img, noise)
+    draw = ImageDraw.Draw(img)
+
+    _team_color_bar(draw, 0, COLORS["YELLOW"])
+
+    # Yellow Card visual — a real card shape with proper perspective
+    card_overlay = Image.new("RGBA", (W, H), (0,0,0,0))
+    cd = ImageDraw.Draw(card_overlay)
+    card_w, card_h = 220, 300
+    cx, cy = W // 2, 210
+    cd.rounded_rectangle([cx - card_w // 2, cy - card_h // 2, cx + card_w // 2, cy + card_h // 2],
+                          radius=18, fill=COLORS["YELLOW"] + (230,), outline=(255, 255, 200, 180), width=3)
+    cd.text((cx, cy - 30), "!", fill=COLORS["BLACK"], font=_f("Montserrat-Bold.ttf", 100), anchor="mm")
+    cd.text((cx, cy + 50), "CAUTION", fill=COLORS["BLACK"], font=_f("Roboto-Regular.ttf", 24), anchor="mm")
+    draw._image.paste(card_overlay, (0,0), card_overlay)
+
+    # "YELLOW CARD" text with shadow
+    _draw_text_with_shadow(draw, "YELLOW CARD", _f("Montserrat-Bold.ttf", 56), 380, W // 2,
+                           COLORS["YELLOW"], COLORS["BLACK_150"], shadow_offset=(3,3), letter_spacing=4)
+
+    # Player photo
+    _player_circle(img, player, W // 2, 570, 250, COLORS["YELLOW"], 6, glow=True)
+    draw = ImageDraw.Draw(img)
+
+    # Player name
+    _draw_text_with_shadow(draw, player.upper(), _f("Montserrat-Bold.ttf", 44), 740, W // 2,
+                           COLORS["WHITE"], COLORS["BLACK_150"], shadow_offset=(2,2))
+    _draw_text(draw, team.upper(), _f("Roboto-Regular.ttf", 26), 790, W // 2, COLORS["YELLOW"])
+    _draw_text(draw, "Unsporting Behavior", _f("Roboto-Regular.ttf", 22), 830, W // 2, COLORS["GRAY"])
+
+    _minute_badge(draw, minute, W // 2, 910, COLORS["YELLOW"], size=100)
+
+    _team_color_bar(draw, H - 8, COLORS["YELLOW"])
+
+    img = img.convert("RGB")
     img.save("post_image.png")
     return "post_image.png"
+
 
 def draw_red_card(player, team, minute, player_img=None):
-    W, H = 1080, 1080
-    img = Image.new("RGB", (W, H), (15, 5, 5)) # Black to dark red
+    img = Image.new("RGBA", (W, H), (10, 5, 5))
     draw = ImageDraw.Draw(img)
-    
-    # Red card slanted
-    card_points = [(W//2 - 90, 60), (W//2 + 90, 70), (W//2 + 70, 320), (W//2 - 110, 310)]
-    draw.polygon(card_points, fill=COLORS["RED"], outline=COLORS["WHITE"], width=3)
-    
-    _cx(draw, "SENT OFF!", _f("Montserrat-Bold.ttf", 72), 340, W//2, COLORS["RED"])
-    
-    p_size = 350
-    p_img = player_img if player_img else get_player_img_clean(player, (p_size, p_size))
-    # Slight desaturation filter simulation
-    p_img = p_img.convert("L").convert("RGBA")
-    
-    mask = Image.new("L", (p_size, p_size), 0)
-    ImageDraw.Draw(mask).ellipse([(0,0), (p_size, p_size)], fill=255)
-    img.paste(p_img.resize((p_size, p_size)), (W//2 - p_size//2, 400), mask)
-    draw.ellipse([(W//2 - p_size//2, 400), (W//2 + p_size//2, 400 + p_size)], outline=COLORS["RED"], width=8)
-    
-    # X icon overlay
-    draw_x_icon(draw, W//2 - 50, 400 + p_size//2 - 50, size=100)
-    
-    # Text
-    _cx(draw, player.upper(), _f("Montserrat-Bold.ttf", 44), 780, W//2, COLORS["WHITE"])
-    _cx(draw, team.upper(), _f("Roboto-Regular.ttf", 30), 840, W//2, COLORS["RED"])
-    _cx(draw, "Serious Foul Play", _f("Montserrat-Bold.ttf", 26), 890, W//2, (255, 100, 100))
-    
-    _cx(draw, f"{minute}'", _f("BebasNeue-Regular.ttf", 40), 950, W//2, COLORS["WHITE"])
-    
+
+    # Red radial gradient
+    gradient = _radial_gradient((W, H), (120, 10, 10), (10, 5, 5), center=(W // 2, 300))
+    img = Image.alpha_composite(img, gradient)
+    draw = ImageDraw.Draw(img)
+
+    noise = _noise_texture((W, H), 10)
+    img = Image.alpha_composite(img, noise)
+    draw = ImageDraw.Draw(img)
+
+    _team_color_bar(draw, 0, COLORS["RED"])
+
+    # Red Card graphic
+    card_overlay = Image.new("RGBA", (W, H), (0,0,0,0))
+    cd = ImageDraw.Draw(card_overlay)
+    card_w, card_h = 220, 300
+    cx, cy = W // 2, 210
+    cd.rounded_rectangle([cx - card_w // 2, cy - card_h // 2, cx + card_w // 2, cy + card_h // 2],
+                          radius=18, fill=COLORS["RED"] + (230,), outline=(255, 150, 150, 150), width=3)
+    cd.text((cx, cy), "✕", fill=COLORS["WHITE"], font=_f("Montserrat-Bold.ttf", 120), anchor="mm")
+    draw._image.paste(card_overlay, (0,0), card_overlay)
+
+    _draw_text_with_shadow(draw, "SENT OFF", _f("Montserrat-Bold.ttf", 60), 380, W // 2,
+                           COLORS["RED"], COLORS["BLACK_150"], shadow_offset=(3,3), letter_spacing=5)
+
+    # Player photo (desaturated - convert to grayscale feel by using darker overlay)
+    _player_circle(img, player, W // 2, 570, 250, COLORS["RED"], 8, glow=True)
+    draw = ImageDraw.Draw(img)
+
+    # X overlay on photo
+    x_overlay = Image.new("RGBA", (W, H), (0,0,0,0))
+    xd = ImageDraw.Draw(x_overlay)
+    xs, ys = W // 2 - 90, 570 - 90
+    line_color = COLORS["RED"] + (180,)
+    xd.line([(xs, ys), (xs + 180, ys + 180)], fill=line_color, width=12)
+    xd.line([(xs + 180, ys), (xs, ys + 180)], fill=line_color, width=12)
+    draw._image.paste(x_overlay, (0,0), x_overlay)
+
+    _draw_text_with_shadow(draw, player.upper(), _f("Montserrat-Bold.ttf", 44), 760, W // 2,
+                           COLORS["WHITE"], COLORS["BLACK_150"], shadow_offset=(2,2))
+    _draw_text(draw, team.upper(), _f("Roboto-Regular.ttf", 26), 810, W // 2, COLORS["RED"])
+    _draw_text(draw, "Serious Foul Play", _f("Roboto-Regular.ttf", 22), 850, W // 2, (255, 120, 120))
+
+    _minute_badge(draw, minute, W // 2, 920, COLORS["RED"], size=100)
+
+    _team_color_bar(draw, H - 8, COLORS["RED"])
+
+    img = img.convert("RGB")
     img.save("post_image.png")
     return "post_image.png"
+
 
 def draw_sub_card(player_off, player_on, team, minute):
-    W, H = 1080, 1080
-    img = Image.new("RGB", (W, H), COLORS["NAVY_DARK"])
+    img = Image.new("RGBA", (W, H), COLORS["NAVY_DARK"])
     draw = ImageDraw.Draw(img)
-    
-    _cx(draw, "SUBSTITUTION", _f("Montserrat-Bold.ttf", 56), 80, W//2, COLORS["WHITE"])
-    
-    # Player OUT (Left)
-    p_size = 280
-    p_off_img = get_player_img_clean(player_off, (p_size, p_size))
-    mask = Image.new("L", (p_size, p_size), 0)
-    ImageDraw.Draw(mask).ellipse([(0,0), (p_size, p_size)], fill=255)
-    img.paste(p_off_img, (200 - p_size//2, 350), mask)
-    draw.ellipse([(200 - p_size//2, 350), (200 + p_size//2, 350 + p_size)], outline=COLORS["RED"], width=5)
-    _cx(draw, player_off.upper(), _f("Roboto-Regular.ttf", 32), 660, 200, COLORS["WHITE"])
-    _cx(draw, "#10", _f("BebasNeue-Regular.ttf", 48), 320, 200, COLORS["RED"])
-    
-    # Divider line
-    draw.line([(540, 350), (540, 750)], fill=(255, 255, 255, 128), width=2)
-    _cx(draw, "OUT/IN", _f("Roboto-Regular.ttf", 24), 530, 540, COLORS["WHITE"])
-    
-    # Player IN (Right)
-    p_on_img = get_player_img_clean(player_on, (p_size, p_size))
-    img.paste(p_on_img, (880 - p_size//2, 350), mask)
-    draw.ellipse([(880 - p_size//2, 350), (880 + p_size//2, 350 + p_size)], outline=COLORS["GREEN"], width=5)
-    _cx(draw, player_on.upper(), _f("Roboto-Regular.ttf", 32), 660, 880, COLORS["WHITE"])
-    _cx(draw, "#7", _f("BebasNeue-Regular.ttf", 48), 320, 880, COLORS["GREEN"])
-    
-    _cx(draw, f"{minute}'", _f("BebasNeue-Regular.ttf", 36), 900, W//2, COLORS["WHITE"])
-    
+
+    gradient = _radial_gradient((W, H), (40, 50, 70), COLORS["NAVY_DARK"], center=(W // 2, 350))
+    img = Image.alpha_composite(img, gradient)
+    draw = ImageDraw.Draw(img)
+
+    noise = _noise_texture((W, H), 8)
+    img = Image.alpha_composite(img, noise)
+    draw = ImageDraw.Draw(img)
+
+    _team_color_bar(draw, 0, COLORS["WHITE"])
+
+    # Header
+    _draw_text_with_shadow(draw, "SUBSTITUTION", _f("Montserrat-Bold.ttf", 52), 80, W // 2,
+                           COLORS["WHITE"], COLORS["BLACK_150"], shadow_offset=(2,2), letter_spacing=6)
+
+    # Glass divider line
+    divider_y = 550
+    draw.line([(100, divider_y), (W - 100, divider_y)], fill=COLORS["WHITE_50"], width=1)
+
+    # Left - Player OUT
+    _player_circle(img, player_off, W // 2 - 200, 350, 220, COLORS["RED"], 6, glow=True)
+    draw = ImageDraw.Draw(img)
+    _draw_text(draw, "OUT", _f("Montserrat-Bold.ttf", 28), W // 2 - 200, 500, COLORS["RED"], anchor="mm")
+    _draw_text(draw, player_off.upper(), _f("Montserrat-Bold.ttf", 30), 620, W // 2 - 200, COLORS["WHITE"], anchor="mm")
+    _draw_text(draw, "#10", _f("BebasNeue-Regular.ttf", 36), 670, W // 2 - 200, COLORS["RED"], anchor="mm")
+
+    # Arrow indicator
+    draw.text((W // 2, divider_y), "⟶", fill=COLORS["WHITE"], font=_f("Roboto-Regular.ttf", 40), anchor="mm")
+
+    # Right - Player IN
+    _player_circle(img, player_on, W // 2 + 200, 350, 220, COLORS["GREEN"], 6, glow=True)
+    draw = ImageDraw.Draw(img)
+    _draw_text(draw, "IN", _f("Montserrat-Bold.ttf", 28), W // 2 + 200, 500, COLORS["GREEN"], anchor="mm")
+    _draw_text(draw, player_on.upper(), _f("Montserrat-Bold.ttf", 30), 620, W // 2 + 200, COLORS["WHITE"], anchor="mm")
+    _draw_text(draw, "#7", _f("BebasNeue-Regular.ttf", 36), 670, W // 2 + 200, COLORS["GREEN"], anchor="mm")
+
+    # Bottom info
+    _rounded_panel(draw, 200, 800, 880, 920, fill=COLORS["WHITE_30"], border=COLORS["WHITE_50"], radius=20)
+    _draw_text(draw, team.upper(), _f("Roboto-Regular.ttf", 24), 835, W // 2, COLORS["WHITE_180"])
+    _draw_text(draw, f"Minute {minute}'", _f("BebasNeue-Regular.ttf", 32), 885, W // 2, COLORS["WHITE"])
+
+    _team_color_bar(draw, H - 8, COLORS["WHITE"])
+
+    img = img.convert("RGB")
     img.save("post_image.png")
     return "post_image.png"
+
 
 def draw_halftime_image(home, away, sh, sa, comp):
-    W, H = 1080, 1080
-    img = Image.new("RGB", (W, H), COLORS["NAVY_DARK"])
+    img = Image.new("RGBA", (W, H), COLORS["NAVY_DARK"])
     draw = ImageDraw.Draw(img)
-    
-    # Split Background
-    for x in range(W):
-        for y in range(H):
-            # Diagonal split
-            if x + y < 1080:
-                img.putpixel((x, y), COLORS["NAVY"])
-            else:
-                img.putpixel((x, y), COLORS["RED"])
+
+    gradient = _radial_gradient((W, H), (50, 50, 70), COLORS["NAVY_DARK"], center=(W // 2, H // 2))
+    img = Image.alpha_composite(img, gradient)
     draw = ImageDraw.Draw(img)
-    
-    _cx(draw, "HALF TIME", _f("Montserrat-Bold.ttf", 64), 80, W//2, COLORS["WHITE"])
-    
-    # Score Box
-    draw.rounded_rectangle([(300, 300), (780, 480)], 20, fill=COLORS["WHITE"])
-    _cx(draw, f"{sh}", _f("BebasNeue-Regular.ttf", 96), 330, 390, COLORS["NAVY"])
-    _cx(draw, "-", _f("Roboto-Regular.ttf", 48), 350, 540, COLORS["GRAY"])
-    _cx(draw, f"{sa}", _f("BebasNeue-Regular.ttf", 96), 330, 690, COLORS["RED"])
-    
-    _cx(draw, home.upper(), _f("Roboto-Regular.ttf", 28), 500, 200, COLORS["WHITE"])
-    _cx(draw, away.upper(), _f("Roboto-Regular.ttf", 28), 500, 880, COLORS["WHITE"])
-    
-    # Stats Panel rounded rect (900x320)
-    draw.rounded_rectangle([(90, 700), (990, 1020)], 20, fill=COLORS["WHITE"])
-    _cx(draw, "POSSESSION: 58% - 42%", _f("Roboto-Regular.ttf", 24), 740, W//2, COLORS["BLACK"])
-    _cx(draw, "SHOTS: 7 - 4", _f("Roboto-Regular.ttf", 24), 810, W//2, COLORS["BLACK"])
-    _cx(draw, "CORNERS: 3 - 2", _f("Roboto-Regular.ttf", 24), 880, W//2, COLORS["BLACK"])
-    
+
+    noise = _noise_texture((W, H), 10)
+    img = Image.alpha_composite(img, noise)
+    draw = ImageDraw.Draw(img)
+
+    _team_color_bar(draw, 0, COLORS["RED"])
+
+    _draw_text_with_shadow(draw, "HALF TIME", _f("Montserrat-Bold.ttf", 64), 90, W // 2,
+                           COLORS["WHITE"], COLORS["BLACK_150"], shadow_offset=(3,3), letter_spacing=8)
+
+    # Score display — large central scoreboard
+    score_bg = Image.new("RGBA", (W, H), (0,0,0,0))
+    sd = ImageDraw.Draw(score_bg)
+    sd.rounded_rectangle([200, 240, 880, 440], radius=30, fill=COLORS["WHITE_30"], outline=COLORS["WHITE_50"], width=2)
+    draw._image.paste(score_bg, (0,0), score_bg)
+
+    _draw_text_with_shadow(draw, sh, _f("BebasNeue-Regular.ttf", 120), 340, 380,
+                           COLORS["WHITE"], COLORS["BLACK_150"], shadow_offset=(3,3))
+    _draw_text(draw, ":", _f("Roboto-Regular.ttf", 60), 340, 540, COLORS["WHITE_100"])
+    _draw_text_with_shadow(draw, sa, _f("BebasNeue-Regular.ttf", 120), 340, 700,
+                           COLORS["WHITE"], COLORS["BLACK_150"], shadow_offset=(3,3))
+
+    # Team names
+    _draw_text(draw, home.upper(), _f("Montserrat-Bold.ttf", 28), 200, 170, COLORS["WHITE"])
+    _draw_text(draw, away.upper(), _f("Montserrat-Bold.ttf", 28), 200, 478, COLORS["WHITE"])
+
+    # Stats glass panel
+    _rounded_panel(draw, 120, 560, 960, 780, fill=COLORS["WHITE_30"], border=COLORS["WHITE_50"], radius=24)
+    _draw_text(draw, "FIRST HALF STATS", _f("Montserrat-Bold.ttf", 28), 600, W // 2, COLORS["WHITE_180"])
+    _draw_text(draw, "Possession: 58%  —  42%", _f("Roboto-Regular.ttf", 22), 660, W // 2, COLORS["WHITE"])
+    _draw_text(draw, "Shots: 7  —  4", _f("Roboto-Regular.ttf", 22), 700, W // 2, COLORS["WHITE"])
+    _draw_text(draw, "Corners: 3  —  2", _f("Roboto-Regular.ttf", 22), 740, W // 2, COLORS["WHITE"])
+
+    # Competition
+    _draw_text(draw, comp.upper(), _f("Roboto-Regular.ttf", 20), 840, W // 2, COLORS["GRAY"])
+
+    _team_color_bar(draw, H - 8, COLORS["RED"])
+
+    img = img.convert("RGB")
     img.save("post_image.png")
     return "post_image.png"
+
 
 def draw_fulltime_image(home, away, sh, sa, comp):
-    W, H = 1080, 1080
-    img = Image.new("RGB", (W, H), COLORS["NAVY_DARK"])
+    img = Image.new("RGBA", (W, H), COLORS["NAVY_DARK"])
     draw = ImageDraw.Draw(img)
-    
-    _cx(draw, "FULL TIME", _f("Montserrat-Bold.ttf", 72), 70, W//2, COLORS["WHITE"])
-    
-    # Large score display
-    _cx(draw, f"{sh}", _f("BebasNeue-Regular.ttf", 120), 280, 350, COLORS["WHITE"])
-    _cx(draw, "-", _f("Roboto-Regular.ttf", 60), 310, 540, COLORS["WHITE"])
-    _cx(draw, f"{sa}", _f("BebasNeue-Regular.ttf", 120), 280, 730, COLORS["WHITE"])
-    
-    _cx(draw, home.upper(), _f("Montserrat-Bold.ttf", 32), 480, 200, COLORS["WHITE"])
-    _cx(draw, away.upper(), _f("Montserrat-Bold.ttf", 32), 480, 880, COLORS["WHITE"])
-    
-    # Match Statistics Panel (950x400)
-    draw.rounded_rectangle([(65, 600), (1015, 1000)], 20, fill=(255, 255, 255, 200))
-    _cx(draw, "MATCH STATS", _f("Montserrat-Bold.ttf", 36), 620, W//2, COLORS["BLACK"])
-    
+
+    gradient = _radial_gradient((W, H), (60, 60, 90), COLORS["NAVY_DARK"], center=(W // 2, H // 2))
+    img = Image.alpha_composite(img, gradient)
+    draw = ImageDraw.Draw(img)
+
+    noise = _noise_texture((W, H), 12)
+    img = Image.alpha_composite(img, noise)
+    draw = ImageDraw.Draw(img)
+
+    _team_color_bar(draw, 0, COLORS["GOLD"])
+
+    _draw_text_with_shadow(draw, "FULL TIME", _f("Montserrat-Bold.ttf", 72), 80, W // 2,
+                           COLORS["GOLD"], COLORS["BLACK_150"], shadow_offset=(3,3), letter_spacing=8)
+
+    # Huge score display
+    _draw_text_with_shadow(draw, sh, _f("BebasNeue-Regular.ttf", 160), 320, 380,
+                           COLORS["WHITE"], COLORS["BLACK_150"], shadow_offset=(5,5))
+    _draw_text_with_shadow(draw, ":", _f("Roboto-Regular.ttf", 80), 340, 540,
+                           COLORS["GOLD"], COLORS["BLACK_80"], shadow_offset=(3,3))
+    _draw_text_with_shadow(draw, sa, _f("BebasNeue-Regular.ttf", 160), 320, 700,
+                           COLORS["WHITE"], COLORS["BLACK_150"], shadow_offset=(5,5))
+
+    # Team names
+    _draw_text(draw, home.upper(), _f("Montserrat-Bold.ttf", 30), 190, 170, COLORS["WHITE"])
+    _draw_text(draw, away.upper(), _f("Montserrat-Bold.ttf", 30), 190, 478, COLORS["WHITE"])
+
+    # Match stats
+    _rounded_panel(draw, 100, 550, 980, 840, fill=COLORS["WHITE_30"], border=COLORS["WHITE_50"], radius=24)
+    _draw_text(draw, "MATCH STATISTICS", _f("Montserrat-Bold.ttf", 30), 590, W // 2, COLORS["GOLD"])
+    _draw_text(draw, "Possession: 55%  —  45%", _f("Roboto-Regular.ttf", 22), 650, W // 2, COLORS["WHITE"])
+    _draw_text(draw, "Total Shots: 12  —  8", _f("Roboto-Regular.ttf", 22), 700, W // 2, COLORS["WHITE"])
+    _draw_text(draw, "Shots on Target: 5  —  3", _f("Roboto-Regular.ttf", 22), 750, W // 2, COLORS["WHITE"])
+    _draw_text(draw, "Yellow Cards: 2  —  1", _f("Roboto-Regular.ttf", 22), 800, W // 2, COLORS["WHITE"])
+
+    _draw_text(draw, comp.upper(), _f("Roboto-Regular.ttf", 20), 900, W // 2, COLORS["GRAY"])
+
+    _team_color_bar(draw, H - 8, COLORS["GOLD"])
+
+    img = img.convert("RGB")
     img.save("post_image.png")
     return "post_image.png"
 
-# Match compatibility with existing routes
+
 def draw_summary_image(home, away, events, comp):
     return draw_fulltime_image(home, away, 0, 0, comp)
 
+
 def draw_live_image(home, away, comp):
-    W, H = 1080, 1080
-    img = Image.new("RGB", (W, H), COLORS["NAVY_DARK"])
+    img = Image.new("RGBA", (W, H), COLORS["NAVY_DARK"])
     draw = ImageDraw.Draw(img)
-    _cx(draw, "MATCH LIVE", _f("Montserrat-Bold.ttf", 64), 100, W//2, COLORS["WHITE"])
-    _cx(draw, f"{home} vs {away}", _f("Montserrat-Bold.ttf", 40), 300, W//2, COLORS["WHITE"])
+
+    gradient = _radial_gradient((W, H), (50, 50, 70), COLORS["NAVY_DARK"], center=(W // 2, H // 2))
+    img = Image.alpha_composite(img, gradient)
+    draw = ImageDraw.Draw(img)
+
+    noise = _noise_texture((W, H), 10)
+    img = Image.alpha_composite(img, noise)
+    draw = ImageDraw.Draw(img)
+
+    _team_color_bar(draw, 0, COLORS["RED"])
+
+    # Red dot + "LIVE" badge
+    live_badge = Image.new("RGBA", (W, H), (0,0,0,0))
+    ld = ImageDraw.Draw(live_badge)
+    ld.rounded_rectangle([W // 2 - 80, 70, W // 2 + 80, 130], radius=30, fill=COLORS["RED"] + (230,),
+                         outline=COLORS["WHITE_50"], width=2)
+    draw._image.paste(live_badge, (0,0), live_badge)
+    draw.ellipse([W // 2 - 40, 88, W // 2 - 20, 108], fill=COLORS["WHITE"])
+    _draw_text(draw, "LIVE", _f("Montserrat-Bold.ttf", 26), 100, W // 2 + 10, COLORS["WHITE"], anchor="mm")
+
+    _draw_text_with_shadow(draw, f"{home}", _f("Montserrat-Bold.ttf", 48), 320, W // 2,
+                           COLORS["WHITE"], COLORS["BLACK_150"], shadow_offset=(3,3))
+    _draw_text(draw, "VS", _f("Montserrat-Bold.ttf", 36), 440, W // 2, COLORS["RED"])
+    _draw_text_with_shadow(draw, f"{away}", _f("Montserrat-Bold.ttf", 48), 560, W // 2,
+                           COLORS["WHITE"], COLORS["BLACK_150"], shadow_offset=(3,3))
+
+    _draw_text(draw, comp.upper(), _f("Roboto-Regular.ttf", 22), 680, W // 2, COLORS["GRAY"])
+
+    _rounded_panel(draw, 200, 700, 880, 820, fill=COLORS["WHITE_30"], border=COLORS["WHITE_50"], radius=20)
+    _draw_text(draw, "Match is in progress", _f("Roboto-Regular.ttf", 24), 760, W // 2, COLORS["WHITE_180"])
+
+    _team_color_bar(draw, H - 8, COLORS["RED"])
+
+    img = img.convert("RGB")
     img.save("post_image.png")
     return "post_image.png"
