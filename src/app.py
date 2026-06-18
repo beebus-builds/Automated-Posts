@@ -261,8 +261,12 @@ def make_event_image(event, data):
         return draw_fulltime_image(home, away, sh, sa, comp)
     return None
 
-PREVIEW_DIR = "previews"
+_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+PREVIEW_DIR = os.path.join(_ROOT, "previews")
 os.makedirs(PREVIEW_DIR, exist_ok=True)
+
+def _img_path(name):
+    return os.path.join(_ROOT, name)
 
 @app.route("/api/preview", methods=["POST"])
 def preview():
@@ -271,20 +275,23 @@ def preview():
     event = data.get("event", "")
     if not event: return jsonify({"error": "No event"}), 400
     try:
-        img_path = make_event_image(event, data)
-        if not img_path: return jsonify({"error": "Unknown event"}), 400
+        img_name = make_event_image(event, data)
+        if not img_name: return jsonify({"error": "Unknown event"}), 400
         caption = make_caption(event, data)
-        name = f"preview_{os.path.basename(img_path)}"
+        name = f"preview_{img_name}"
         dst = os.path.join(PREVIEW_DIR, name)
-        shutil.copy2(img_path, dst)
-        os.remove(img_path)
+        shutil.copy2(_img_path(img_name), dst)
+        os.remove(_img_path(img_name))
         return jsonify({"preview_url": f"/api/image/{name}", "caption": caption, "event": event})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
 @app.route("/api/image/<name>")
 def serve_preview(name):
-    return send_from_directory(PREVIEW_DIR, name)
+    path = os.path.join(PREVIEW_DIR, name)
+    if not os.path.exists(path):
+        return jsonify({"error": "not found"}), 404
+    return send_file(path, mimetype="image/png")
 
 @app.route("/api/post", methods=["POST"])
 def post_event():
