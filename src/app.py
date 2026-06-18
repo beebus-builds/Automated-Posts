@@ -14,6 +14,20 @@ TOKEN = os.environ.get("FB_PAGE_ACCESS_TOKEN")
 PAGE_ID = os.environ.get("FB_PAGE_ID")
 HISTORY_FILE = "history.json"
 
+# Auto-resolve to Page Access Token if a User Token was provided
+if TOKEN and PAGE_ID:
+    try:
+        r = requests.get(f"https://graph.facebook.com/v20.0/me/accounts", params={"access_token": TOKEN}, timeout=10)
+        accounts = r.json().get("data", [])
+        for acc in accounts:
+            if acc.get("id") == PAGE_ID:
+                page_token = acc.get("access_token")
+                if page_token:
+                    TOKEN = page_token
+                    break
+    except:
+        pass
+
 def load_history():
     try:
         with open(HISTORY_FILE) as f: return json.load(f)
