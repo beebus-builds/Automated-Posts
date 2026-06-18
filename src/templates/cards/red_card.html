@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=1080, initial-scale=1">
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700;900&family=Bebas+Neue&family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+html, body { width:1080px; height:1080px; overflow:hidden; font-family:'Inter',sans-serif; }
+.card {
+  width:1080px; height:1080px;
+  position:relative;
+  background: linear-gradient(160deg, #0a0505 0%, #1a0808 40%, #2a0a0a 70%, #0d0505 100%);
+  display:flex; flex-direction:column; align-items:center;
+}
+.card::before {
+  content:''; position:absolute; inset:0;
+  background: radial-gradient(ellipse 60% 40% at 50% 25%, rgba(220,20,60,.12), transparent);
+  pointer-events:none;
+}
+.card::after {
+  content:''; position:absolute; inset:0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 1080 1080' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.045'/%3E%3C/svg%3E");
+  pointer-events:none;
+}
+.accent-bar { position:absolute; top:0; left:0; right:0; height:4px; background:linear-gradient(90deg, #dc143c, #ff1744); }
+
+.card-visual {
+  width:180px; height:250px;
+  background:linear-gradient(145deg, #dc143c, #b01030);
+  border-radius:16px;
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  margin-top:50px;
+  box-shadow:0 8px 30px rgba(220,20,60,.3);
+  border:2px solid rgba(255,255,255,.1);
+}
+.card-visual .x { color:#fff; font-size:90px; font-weight:900; line-height:1; font-family:'Montserrat',sans-serif; }
+
+.title {
+  font-family:'Montserrat',sans-serif;
+  font-weight:700;
+  font-size:52px;
+  color:#dc143c;
+  text-align:center;
+  margin-top:24px;
+  letter-spacing:.08em;
+  text-shadow:0 2px 20px rgba(220,20,60,.4);
+}
+
+.photo-wrapper { position:relative; width:220px; height:220px; margin:24px auto; }
+.photo-ring {
+  width:220px; height:220px;
+  border-radius:50%;
+  background:linear-gradient(135deg, #1e293b, #334155);
+  display:flex; align-items:center; justify-content:center;
+  border:4px solid #dc143c;
+  box-shadow:0 0 30px rgba(220,20,60,.25), inset 0 -20px 40px rgba(0,0,0,.3);
+  position:relative; overflow:hidden;
+  filter:grayscale(60%);
+}
+.photo-ring::before {
+  content:''; position:absolute; inset:0;
+  background:radial-gradient(ellipse at 35% 30%, rgba(255,255,255,.1), transparent 60%);
+  border-radius:50%;
+}
+.initials { font-family:'Montserrat',sans-serif; font-weight:900; font-size:56px; color:rgba(255,255,255,.5); }
+
+/* X overlay on photo */
+.x-overlay {
+  position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+  pointer-events:none;
+}
+.x-overlay svg { width:100px; height:100px; stroke:#dc143c; stroke-width:8; opacity:.7; }
+
+.player-name { font-family:'Montserrat',sans-serif; font-weight:700; font-size:38px; color:#fff; text-align:center; text-shadow:0 2px 8px rgba(0,0,0,.5); }
+.team-name { font-weight:600; font-size:20px; color:#dc143c; text-align:center; margin-top:4px; letter-spacing:.04em; text-transform:uppercase; }
+.reason { font-size:16px; color:#ff9090; text-align:center; margin-top:4px; font-weight:600; }
+
+.minute-badge {
+  display:inline-flex; align-items:center;
+  padding:8px 28px;
+  background:#dc143c;
+  border-radius:30px;
+  font-family:'Bebas Neue',sans-serif;
+  font-size:36px;
+  color:#fff;
+  box-shadow:0 4px 15px rgba(220,20,60,.3);
+  margin-top:20px;
+}
+
+.bottom-line { position:absolute; bottom:0; left:0; right:0; height:3px; background:linear-gradient(90deg, #dc143c, transparent 60%); }
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="accent-bar"></div>
+  <div class="card-visual">
+    <span class="x">✕</span>
+  </div>
+  <div class="title">SENT OFF</div>
+  <div class="photo-wrapper">
+    <div class="photo-ring">
+      <span class="initials">{{ initials }}</span>
+    </div>
+    <div class="x-overlay">
+      <svg viewBox="0 0 100 100"><line x1="10" y1="10" x2="90" y2="90"/><line x1="90" y1="10" x2="10" y2="90"/></svg>
+    </div>
+  </div>
+  <div class="player-name">{{ player }}</div>
+  <div class="team-name">{{ team }}</div>
+  <div class="reason">{{ reason }}</div>
+  <div class="minute-badge">{{ minute }}'</div>
+  <div class="bottom-line"></div>
+</div>
+</body>
+</html>
