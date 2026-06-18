@@ -68,8 +68,63 @@ def draw_yellow_card(player, team, minute, player_img=None):
     W, H = 1080, 1080
     img = Image.new("RGB", (W, H), COLORS["NAVY_DARK"])
     draw = ImageDraw.Draw(img)
-    # [Implementation following Yellow Card specs...]
+    _cx(draw, "YELLOW CARD", _f(64, bold=True), 340, W//2, COLORS["YELLOW"])
+    _cx(draw, player.upper(), _f(44, bold=True), 780, W//2, COLORS["WHITE"])
+    _cx(draw, team.upper(), _f(30), 840, W//2, COLORS["YELLOW"])
+    _cx(draw, f"{minute}'", _f(40, bold=True), 950, W//2, COLORS["WHITE"])
     img.save("post_image.png")
     return "post_image.png"
 
-# ... (Implement others similarly)
+def draw_red_card(player, team, minute, player_img=None):
+    W, H = 1080, 1080
+    img = Image.new("RGB", (W, H), COLORS["BLACK"])
+    draw = ImageDraw.Draw(img)
+    _cx(draw, "SENT OFF!", _f(72, bold=True), 340, W//2, COLORS["RED"])
+    _cx(draw, player.upper(), _f(44, bold=True), 780, W//2, COLORS["WHITE"])
+    _cx(draw, team.upper(), _f(30), 840, W//2, COLORS["RED"])
+    _cx(draw, f"{minute}'", _f(40, bold=True), 950, W//2, COLORS["WHITE"])
+    img.save("post_image.png")
+    return "post_image.png"
+
+def draw_sub_card(player_off, player_on, team, minute):
+    W, H = 1080, 1080
+    img = Image.new("RGB", (W, H), COLORS["NAVY_DARK"])
+    draw = ImageDraw.Draw(img)
+    _cx(draw, "SUBSTITUTION", _f(56, bold=True), 80, W//2, COLORS["WHITE"])
+    img.save("post_image.png")
+    return "post_image.png"
+
+def draw_halftime_image(home, away, sh, sa, comp):
+    W, H = 1080, 1080
+    img = Image.new("RGB", (W, H), COLORS["NAVY_DARK"])
+    draw = ImageDraw.Draw(img)
+    _cx(draw, "HALF TIME", _f(64, bold=True), 100, W//2, COLORS["WHITE"])
+    _cx(draw, f"{sh} - {sa}", _f(96, bold=True), 300, W//2, COLORS["WHITE"])
+    img.save("post_image.png")
+    return "post_image.png"
+
+def draw_fulltime_image(home, away, sh, sa, comp):
+    W, H = 1080, 1080
+    img = Image.new("RGB", (W, H), COLORS["NAVY_DARK"])
+    draw = ImageDraw.Draw(img)
+    _cx(draw, "FULL TIME", _f(64, bold=True), 100, W//2, COLORS["WHITE"])
+    _cx(draw, f"{sh} - {sa}", _f(96, bold=True), 300, W//2, COLORS["WHITE"])
+    img.save("post_image.png")
+    return "post_image.png"
+
+def draw_summary_image(home, away, events, comp):
+    W, H = 1080, 1080
+    img = Image.new("RGB", (W, H), COLORS["NAVY_DARK"])
+    draw = ImageDraw.Draw(img)
+    _cx(draw, "SUMMARY", _f(64, bold=True), 100, W//2, COLORS["WHITE"])
+    img.save("post_image.png")
+    return "post_image.png"
+
+def draw_live_image(home, away, comp):
+    W, H = 1080, 1080
+    img = Image.new("RGB", (W, H), COLORS["NAVY_DARK"])
+    draw = ImageDraw.Draw(img)
+    _cx(draw, "MATCH LIVE", _f(64, bold=True), 100, W//2, COLORS["WHITE"])
+    _cx(draw, f"{home} vs {away}", _f(40, bold=True), 300, W//2, COLORS["WHITE"])
+    img.save("post_image.png")
+    return "post_image.png"
