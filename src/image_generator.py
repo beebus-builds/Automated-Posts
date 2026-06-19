@@ -329,6 +329,10 @@ def draw_fulltime_image(home, away, sh, sa, comp, home_code="np", away_code="in"
     img.save(output_path)
     return output_path
 
+def draw_summary_image(home, away, events, comp, output_path=None):
+    """Wrapper for full-time image to maintain compatibility with app.py"""
+    return draw_fulltime_image(home, away, "0", "0", comp, output_path=output_path)
+
 def draw_live_image(home, away, comp, home_code="np", away_code="in", output_path=None):
     output_path = output_path or _out_path()
     img = Image.new("RGBA", (W, H), COLORS["BLACK"])
