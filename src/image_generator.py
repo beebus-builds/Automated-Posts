@@ -4,7 +4,7 @@ from math import sin, pi, cos
 import random
 
 _ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-BRAND_LOGO_PATH = os.path.join(_ROOT, "src", "static", "brand_logo.png")
+BRAND_LOGO_PATH = os.path.join(_ROOT, "src", "static", "brand-logo.jpg")
 
 def _out_path(name=None):
     ts = str(int(time.time() * 1000))
@@ -124,7 +124,7 @@ def _draw_dynamic_bg(img, color_main=COLORS["NAVY"]):
     # Background gradient
     overlay = Image.new("RGBA", (W, H), (0,0,0,0))
     od = ImageDraw.Draw(overlay)
-    od.ellipse([W//4, -W//4, 3*W//4, H, fill=tuple(c*0.8 for c in color_main) + (100,)])
+    od.ellipse([W//4, -W//4, 3*W//4, H], fill=tuple(int(c*0.8) for c in color_main) + (100,))
     img.paste(overlay, (0,0), overlay)
     
     # Brand accent diagonals (Dynamic feel)
