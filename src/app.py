@@ -249,31 +249,34 @@ def make_caption(event, data):
 def make_event_image(event, data, output_path=None):
     home = data.get("home", "Team 1")
     away = data.get("away", "Team 2")
+    home_code = data.get("home_code", "np")
+    away_code = data.get("away_code", "in")
+    player_img = data.get("player_img")
     comp = data.get("comp", "World Cup 2026")
     sh = data.get("sh", "0")
     sa = data.get("sa", "0")
     kw = {} if output_path is None else {"output_path": output_path}
     if event == "goal":
-        return draw_goal_card(data.get("scorer", "Unknown"), data.get("minute", "?"), home, None, **kw)
+        return draw_goal_card(data.get("scorer", "Unknown"), data.get("minute", "?"), home, home_code, player_img, **kw)
     if event == "card":
         card_type = data.get("card_type", "YELLOW")
         player = data.get("player") or data.get("scorer", "Unknown")
         if card_type == "RED":
-            return draw_red_card(player, home, data.get("minute", "?"), None, **kw)
-        return draw_yellow_card(player, home, data.get("minute", "?"), None, **kw)
+            return draw_red_card(player, home, data.get("minute", "?"), home_code, player_img, **kw)
+        return draw_yellow_card(player, home, data.get("minute", "?"), home_code, player_img, **kw)
     if event == "sub":
         return draw_sub_card(
             data.get("player_off") or data.get("off", "Unknown"),
             data.get("player_on") or data.get("on", "Unknown"),
-            home, data.get("minute", "?"), **kw)
+            home, data.get("minute", "?"), home_code, None, player_img, **kw)
     if event == "halftime":
-        return draw_halftime_image(home, away, sh, sa, comp, **kw)
+        return draw_halftime_image(home, away, sh, sa, comp, home_code, away_code, **kw)
     if event == "fulltime":
-        return draw_fulltime_image(home, away, sh, sa, comp, **kw)
+        return draw_fulltime_image(home, away, sh, sa, comp, home_code, away_code, **kw)
     if event == "live":
-        return draw_live_image(home, away, comp, **kw)
+        return draw_live_image(home, away, comp, home_code, away_code, **kw)
     if event in ("secondhalf", "summary"):
-        return draw_fulltime_image(home, away, sh, sa, comp, **kw)
+        return draw_fulltime_image(home, away, sh, sa, comp, home_code, away_code, **kw)
     return None
 
 _ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))

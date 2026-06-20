@@ -455,27 +455,46 @@ body {
 
           <div class="section-label">Match Details</div>
 
-          <div class="form-row">
-            <div class="form-group">
-              <label>Home</label>
-              <input name="home" placeholder="e.g. Nepal" oninput="refreshPreview()">
-            </div>
-            <div class="form-group">
-              <label>Away</label>
-              <input name="away" placeholder="e.g. India" oninput="refreshPreview()">
-            </div>
-          </div>
+           <div class="form-row">
+             <div class="form-group">
+               <label>Home</label>
+               <input name="home" placeholder="e.g. Nepal" oninput="refreshPreview()">
+             </div>
+             <div class="form-group">
+               <label>Away</label>
+               <input name="away" placeholder="e.g. India" oninput="refreshPreview()">
+             </div>
+           </div>
 
-          <div class="form-row">
-            <div class="form-group" style="grid-column: 1;">
-              <label id="player1Label">Scorer</label>
-              <input name="scorer" id="player1Input" placeholder="Player name" oninput="refreshPreview()">
-            </div>
-            <div class="form-group" id="player2Field">
-              <label>Player In</label>
-              <input name="player_on" placeholder="Substitute" oninput="refreshPreview()">
-            </div>
-          </div>
+           <div class="form-row">
+             <div class="form-group">
+               <label>Home Country Code</label>
+               <input name="home_code" placeholder="e.g. np" oninput="refreshPreview()">
+             </div>
+             <div class="form-group">
+               <label>Away Country Code</label>
+               <input name="away_code" placeholder="e.g. in" oninput="refreshPreview()">
+             </div>
+           </div>
+
+           <div class="form-row">
+             <div class="form-group" style="grid-column: 1;">
+               <label id="player1Label">Scorer</label>
+               <input name="scorer" id="player1Input" placeholder="Player name" oninput="refreshPreview()">
+             </div>
+             <div class="form-group" id="player2Field">
+               <label>Player In</label>
+               <input name="player_on" placeholder="Substitute" oninput="refreshPreview()">
+             </div>
+           </div>
+
+           <div class="form-row single">
+             <div class="form-group">
+               <label>Player Image URL</label>
+               <input name="player_img" placeholder="https://example.com/player.jpg" oninput="refreshPreview()">
+             </div>
+           </div>
+
 
           <div class="form-row" id="scoreRow" style="display:none;">
             <div class="form-group">
