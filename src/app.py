@@ -5,13 +5,15 @@ from .image_generator import (
     draw_goal_card, draw_yellow_card, draw_red_card, draw_sub_card,
     draw_halftime_image, draw_fulltime_image, draw_summary_image, draw_live_image
 )
+from .database import init_db
+from .scheduler import start_scheduler
 
 load_dotenv()
 
 app = Flask(__name__, static_folder="static", static_url_path="")
 
 TOKEN = os.environ.get("FB_PAGE_ACCESS_TOKEN")
-PAGE_ID = os.environ.get("FB_PAGE_ID")
+PAGE_ID = "1222303417625710" # Updated to provided ID
 HISTORY_FILE = "history.json"
 
 # Auto-resolve to Page Access Token if a User Token was provided
@@ -344,4 +346,6 @@ def post_event():
 def history(): return jsonify(load_history())
 
 if __name__ == "__main__":
+    init_db()
+    start_scheduler()
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)), debug=True)
