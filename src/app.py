@@ -13,7 +13,7 @@ load_dotenv()
 app = Flask(__name__, static_folder="static", static_url_path="")
 
 TOKEN = os.environ.get("FB_PAGE_ACCESS_TOKEN")
-PAGE_ID = "1222303417625710" # Updated to provided ID
+PAGE_ID = os.environ.get("FB_PAGE_ID")
 HISTORY_FILE = "history.json"
 
 # Auto-resolve to Page Access Token if a User Token was provided
