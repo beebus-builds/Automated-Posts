@@ -1,7 +1,6 @@
 import logging
 from apscheduler.schedulers.background import BackgroundScheduler
 from src.database import is_event_posted, mark_event_posted
-from src.app import app, make_event_image, make_caption, post_to_fb
 import random
 
 logging.basicConfig(level=logging.INFO)
@@ -28,6 +27,7 @@ class SportsAPIProvider:
 
 def automation_job():
     """The background task that polls for events and posts to FB."""
+    from src.app import app, make_event_image, make_caption, post_to_fb
     with app.app_context():
         logger.info("Checking for new sports events...")
         provider = SportsAPIProvider()
