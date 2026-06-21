@@ -25,19 +25,19 @@ BRAND_COLORS = {
 
 THEMES = {
     "world cup": {
-        "main": (20, 40, 100),      # Royal Blue
-        "accent": (251, 191, 36),   # Gold
-        "glow": (251, 191, 36, 120) # Gold Glow
+        "main": (20, 40, 100),
+        "accent": (251, 191, 36),
+        "glow": (251, 191, 36, 120)
     },
     "champions league": {
-        "main": (30, 10, 60),       # Deep Purple
-        "accent": (200, 200, 220),  # Silver/White
-        "glow": (150, 150, 255, 120) # Purple Glow
+        "main": (30, 10, 60),
+        "accent": (200, 200, 220),
+        "glow": (150, 150, 255, 120)
     },
     "premier league": {
-        "main": (80, 20, 120),      # Neon Purple
-        "accent": (255, 255, 255),  # White
-        "glow": (180, 80, 255, 120) # Purple Glow
+        "main": (80, 20, 120),
+        "accent": (255, 255, 255),
+        "glow": (180, 80, 255, 120)
     },
     "default": {
         "main": BRAND_COLORS["NAVY"],
@@ -47,15 +47,12 @@ THEMES = {
 }
 
 def get_theme(competition):
-    """Returns the theme colors based on competition name."""
     if not competition: return THEMES["default"]
     comp_lower = competition.lower()
     for key, theme in THEMES.items():
         if key in comp_lower:
             return theme
     return THEMES["default"]
-
-W, H = 1080, 1080
 
 # --- FONTS ---
 FONT_PATHS = {
@@ -84,7 +81,7 @@ def _f(name, size):
         except: pass
     return ImageFont.load_default()
 
-# --- ADVANCED ASSET UTILS ---
+# --- ASSET UTILS ---
 
 def _fetch_image(url):
     if not url: return None
@@ -133,17 +130,17 @@ def _mask_circle(img, size=450):
     output.paste(img, (0,0), mask)
     return output
 
-def _add_action_elements(img, accent_color):
+def _add_action_elements(img, accent_color, width, height):
     draw = ImageDraw.Draw(img)
     for _ in range(60):
-        x, y = random.randint(0, W), random.randint(0, H)
+        x, y = random.randint(0, width), random.randint(0, height)
         size = random.randint(1, 3)
         color = random.choice([BRAND_COLORS["WHITE"], accent_color]) + (random.randint(100, 200),)
         draw.ellipse([x, y, x+size, y+size], fill=color)
-    overlay = Image.new("RGBA", (W, H), (0,0,0,0))
+    overlay = Image.new("RGBA", (width, height), (0,0,0,0))
     od = ImageDraw.Draw(overlay)
-    for i in range(0, W, 100):
-        od.line([i, 0, i-200, H], fill=BRAND_COLORS["WHITE_30"], width=2)
+    for i in range(0, width, 100):
+        od.line([i, 0, i-200, height], fill=BRAND_COLORS["WHITE_30"], width=2)
     img.paste(overlay, (0,0), overlay)
 
 def _draw_text_shadow(draw, text, font, y, cx, fill="white", anchor="mt"):
@@ -156,27 +153,28 @@ def _draw_brand_logo(img, x, y, size=200):
     logo = logo.resize((size, size), Image.Resampling.LANCZOS)
     img.paste(logo, (x, y), logo)
 
-def _draw_dynamic_bg(img, theme):
+def _draw_dynamic_bg(img, theme, width, height):
     draw = ImageDraw.Draw(img)
-    overlay = Image.new("RGBA", (W, H), (0,0,0,0))
+    overlay = Image.new("RGBA", (width, height), (0,0,0,0))
     od = ImageDraw.Draw(overlay)
-    od.ellipse([W//4, -W//4, 3*W//4, H], fill=tuple(int(c*0.7) for c in theme["main"]) + (150,))
+    od.ellipse([width//4, -width//4, 3*width//4, height], fill=tuple(int(c*0.7) for c in theme["main"]) + (150,))
     img.paste(overlay, (0,0), overlay)
-    draw.polygon([ (0, 0), (W//3, 0), (0, H//3) ], fill=theme["accent"])
-    draw.polygon([ (W, H), (2*W//3, H), (W, 2*H//3) ], fill=theme["accent"])
-    _add_action_elements(img, theme["accent"])
+    draw.polygon([ (0, 0), (width//3, 0), (0, height//3) ], fill=theme["accent"])
+    draw.polygon([ (width, height), (2*width//3, height), (width, 2*height//3) ], fill=theme["accent"])
+    _add_action_elements(img, theme["accent"], width, height)
 
 # === TEMPLATES ===
 
-def draw_goal_card(scorer, minute, team_name, country_code="np", player_img_url=None, comp="World Cup", output_path=None):
+def draw_goal_card(scorer, minute, team_name, country_code="np", player_img_url=None, comp="World Cup", output_path=None, vertical=False):
+    W, H = (1080, 1920) if vertical else (1080, 1080)
     output_path = output_path or _out_path()
     theme = get_theme(comp)
     img = Image.new("RGBA", (W, H), BRAND_COLORS["BLACK"])
-    _draw_dynamic_bg(img, theme)
+    _draw_dynamic_bg(img, theme, W, H)
     draw = ImageDraw.Draw(img)
 
     flag = _get_waving_flag(country_code)
-    if flag: img.paste(flag, (W//2 - flag.size[0]//2, 120), flag)
+    if flag: img.paste(flag, (W//2 - flag.size[0]//2, 120 if not vertical else 200), flag)
 
     player_raw = _fetch_image(player_img_url) if player_img_url else _get_premium_silhouette(scorer)
     player = _mask_circle(player_raw)
@@ -185,130 +183,135 @@ def draw_goal_card(scorer, minute, team_name, country_code="np", player_img_url=
         gd = ImageDraw.Draw(glow)
         gd.ellipse([0, 0, 550, 550], fill=theme["glow"])
         glow = glow.filter(ImageFilter.GaussianBlur(radius=40))
-        img.paste(glow, (W//2 - 275, 325), glow)
-        img.paste(player, (W//2 - 225, 375), player)
+        img.paste(glow, (W//2 - 275, 325 if not vertical else 400), glow)
+        img.paste(player, (W//2 - 225, 375 if not vertical else 450), player)
 
-    _draw_text_shadow(draw, "GOAL!", _f("BebasNeue-Regular.ttf", 200), 220, W//2, BRAND_COLORS["WHITE"])
-    _draw_text_shadow(draw, scorer.upper(), _f("Montserrat-Bold.ttf", 70), 750, W//2, BRAND_COLORS["WHITE"])
-    _draw_text_shadow(draw, f"MINUTE {minute}'", _f("Roboto-Regular.ttf", 34), 830, W//2, theme["accent"])
-    _draw_text_shadow(draw, team_name.upper(), _f("Montserrat-Bold.ttf", 44), 890, W//2, BRAND_COLORS["WHITE"])
+    _draw_text_shadow(draw, "GOAL!", _f("BebasNeue-Regular.ttf", 200), 220 if not vertical else 300, W//2, BRAND_COLORS["WHITE"])
+    _draw_text_shadow(draw, scorer.upper(), _f("Montserrat-Bold.ttf", 70), 750 if not vertical else 950, W//2, BRAND_COLORS["WHITE"])
+    _draw_text_shadow(draw, f"MINUTE {minute}'", _f("Roboto-Regular.ttf", 34), 830 if not vertical else 1030, W//2, theme["accent"])
+    _draw_text_shadow(draw, team_name.upper(), _f("Montserrat-Bold.ttf", 44), 890 if not vertical else 1090, W//2, BRAND_COLORS["WHITE"])
 
     _draw_brand_logo(img, W - 250, 50, size=150)
     img.convert("RGB").save(output_path)
     return output_path
 
-def draw_yellow_card(player, team, minute, country_code="np", player_img_url=None, comp="World Cup", output_path=None):
+def draw_yellow_card(player, team, minute, country_code="np", player_img_url=None, comp="World Cup", output_path=None, vertical=False):
+    W, H = (1080, 1920) if vertical else (1080, 1080)
     output_path = output_path or _out_path()
     theme = get_theme(comp)
     img = Image.new("RGBA", (W, H), BRAND_COLORS["BLACK"])
-    _draw_dynamic_bg(img, theme)
+    _draw_dynamic_bg(img, theme, W, H)
     draw = ImageDraw.Draw(img)
 
     flag = _get_waving_flag(country_code)
-    if flag: img.paste(flag, (W//2 - flag.size[0]//2, 100), flag)
+    if flag: img.paste(flag, (W//2 - flag.size[0]//2, 100 if not vertical else 200), flag)
 
     player_raw = _fetch_image(player_img_url) if player_img_url else _get_premium_silhouette(player)
     player = _mask_circle(player_raw, size=400)
-    if player: img.paste(player, (W//2 - 200, 300), player)
+    if player: img.paste(player, (W//2 - 200, 300 if not vertical else 400), player)
 
-    _draw_text_shadow(draw, "YELLOW CARD", _f("BebasNeue-Regular.ttf", 140), 650, W//2, BRAND_COLORS["GOLD"])
-    _draw_text_shadow(draw, player.upper(), _f("Montserrat-Bold.ttf", 60), 780, W//2, BRAND_COLORS["WHITE"])
-    _draw_text_shadow(draw, f"Minute {minute}'", _f("Roboto-Regular.ttf", 34), 850, W//2, BRAND_COLORS["GOLD"])
+    _draw_text_shadow(draw, "YELLOW CARD", _f("BebasNeue-Regular.ttf", 140), 650 if not vertical else 850, W//2, BRAND_COLORS["GOLD"])
+    _draw_text_shadow(draw, player.upper(), _f("Montserrat-Bold.ttf", 60), 780 if not vertical else 980, W//2, BRAND_COLORS["WHITE"])
+    _draw_text_shadow(draw, f"Minute {minute}'", _f("Roboto-Regular.ttf", 34), 850 if not vertical else 1050, W//2, BRAND_COLORS["GOLD"])
 
     _draw_brand_logo(img, W - 250, 50, size=150)
     img.convert("RGB").save(output_path)
     return output_path
 
-def draw_red_card(player, team, minute, country_code="np", player_img_url=None, comp="World Cup", output_path=None):
+def draw_red_card(player, team, minute, country_code="np", player_img_url=None, comp="World Cup", output_path=None, vertical=False):
+    W, H = (1080, 1920) if vertical else (1080, 1080)
     output_path = output_path or _out_path()
     theme = get_theme(comp)
     img = Image.new("RGBA", (W, H), BRAND_COLORS["BLACK"])
-    _draw_dynamic_bg(img, theme)
+    _draw_dynamic_bg(img, theme, W, H)
     draw = ImageDraw.Draw(img)
 
     flag = _get_waving_flag(country_code)
-    if flag: img.paste(flag, (W//2 - flag.size[0]//2, 100), flag)
+    if flag: img.paste(flag, (W//2 - flag.size[0]//2, 100 if not vertical else 200), flag)
 
     player_raw = _fetch_image(player_img_url) if player_img_url else _get_premium_silhouette(player)
     player = _mask_circle(player_raw, size=400)
     if player:
         overlay = Image.new("RGBA", player.size, theme["accent"] + (120,))
         player = Image.alpha_composite(player, overlay)
-        img.paste(player, (W//2 - 200, 300), player)
+        img.paste(player, (W//2 - 200, 300 if not vertical else 400), player)
 
-    _draw_text_shadow(draw, "SENT OFF", _f("BebasNeue-Regular.ttf", 140), 650, W//2, BRAND_COLORS["WHITE"])
-    _draw_text_shadow(draw, player.upper(), _f("Montserrat-Bold.ttf", 60), 780, W//2, BRAND_COLORS["WHITE"])
-    _draw_text_shadow(draw, f"Minute {minute}'", _f("Roboto-Regular.ttf", 34), 850, W//2, BRAND_COLORS["WHITE"])
+    _draw_text_shadow(draw, "SENT OFF", _f("BebasNeue-Regular.ttf", 140), 650 if not vertical else 850, W//2, BRAND_COLORS["WHITE"])
+    _draw_text_shadow(draw, player.upper(), _f("Montserrat-Bold.ttf", 60), 780 if not vertical else 980, W//2, BRAND_COLORS["WHITE"])
+    _draw_text_shadow(draw, f"Minute {minute}'", _f("Roboto-Regular.ttf", 34), 850 if not vertical else 1050, W//2, BRAND_COLORS["WHITE"])
 
     _draw_brand_logo(img, W - 250, 50, size=150)
     img.convert("RGB").save(output_path)
     return output_path
 
-def draw_sub_card(player_off, player_on, team, minute, country_code="np", player_img_url_off=None, player_img_url_on=None, comp="World Cup", output_path=None):
+def draw_sub_card(player_off, player_on, team, minute, country_code="np", player_img_url_off=None, player_img_url_on=None, comp="World Cup", output_path=None, vertical=False):
+    W, H = (1080, 1920) if vertical else (1080, 1080)
     output_path = output_path or _out_path()
     theme = get_theme(comp)
     img = Image.new("RGBA", (W, H), BRAND_COLORS["BLACK"])
-    _draw_dynamic_bg(img, theme)
+    _draw_dynamic_bg(img, theme, W, H)
     draw = ImageDraw.Draw(img)
 
     flag = _get_waving_flag(country_code)
-    if flag: img.paste(flag, (W//2 - flag.size[0]//2, 80), flag)
+    if flag: img.paste(flag, (W//2 - flag.size[0]//2, 80 if not vertical else 200), flag)
 
     p_off_raw = _fetch_image(player_img_url_off) if player_img_url_off else _get_premium_silhouette(player_off)
     p_on_raw = _fetch_image(player_img_url_on) if player_img_url_on else _get_premium_silhouette(player_on)
     p_off = _mask_circle(p_off_raw, size=300)
     p_on = _mask_circle(p_on_raw, size=300)
     
-    if p_off: img.paste(p_off, (W//2 - 350, 350), p_off)
-    if p_on: img.paste(p_on, (W//2 + 50, 350), p_on)
+    if p_off: img.paste(p_off, (W//2 - 350, 350 if not vertical else 450), p_off)
+    if p_on: img.paste(p_on, (W//2 + 50, 350 if not vertical else 450), p_on)
 
-    _draw_text_shadow(draw, "SUBSTITUTION", _f("BebasNeue-Regular.ttf", 100), 250, W//2, BRAND_COLORS["WHITE"])
-    _draw_text_shadow(draw, "OUT", _f("Montserrat-Bold.ttf", 34), 670, W//2 - 200, theme["accent"], anchor="mm")
-    _draw_text_shadow(draw, "IN", _f("Montserrat-Bold.ttf", 34), 670, W//2 + 200, BRAND_COLORS["GOLD"], anchor="mm")
-    _draw_text_shadow(draw, player_off.upper(), _f("Montserrat-Bold.ttf", 34), 720, W//2 - 200, BRAND_COLORS["WHITE"], anchor="mm")
-    _draw_text_shadow(draw, player_on.upper(), _f("Montserrat-Bold.ttf", 34), 720, W//2 + 200, BRAND_COLORS["WHITE"], anchor="mm")
+    _draw_text_shadow(draw, "SUBSTITUTION", _f("BebasNeue-Regular.ttf", 100), 250 if not vertical else 350, W//2, BRAND_COLORS["WHITE"])
+    _draw_text_shadow(draw, "OUT", _f("Montserrat-Bold.ttf", 34), 670 if not vertical else 870, W//2 - 200, theme["accent"], anchor="mm")
+    _draw_text_shadow(draw, "IN", _f("Montserrat-Bold.ttf", 34), 670 if not vertical else 870, W//2 + 200, BRAND_COLORS["GOLD"], anchor="mm")
+    _draw_text_shadow(draw, player_off.upper(), _f("Montserrat-Bold.ttf", 34), 720 if not vertical else 920, W//2 - 200, BRAND_COLORS["WHITE"], anchor="mm")
+    _draw_text_shadow(draw, player_on.upper(), _f("Montserrat-Bold.ttf", 34), 720 if not vertical else 920, W//2 + 200, BRAND_COLORS["WHITE"], anchor="mm")
 
     _draw_brand_logo(img, W - 250, 50, size=150)
     img.convert("RGB").save(output_path)
     return output_path
 
-def draw_halftime_image(home, away, sh, sa, comp, home_code="np", away_code="in", output_path=None):
+def draw_halftime_image(home, away, sh, sa, comp, home_code="np", away_code="in", output_path=None, vertical=False):
+    W, H = (1080, 1920) if vertical else (1080, 1080)
     output_path = output_path or _out_path()
     theme = get_theme(comp)
     img = Image.new("RGBA", (W, H), BRAND_COLORS["BLACK"])
-    _draw_dynamic_bg(img, theme)
+    _draw_dynamic_bg(img, theme, W, H)
     draw = ImageDraw.Draw(img)
 
     f_home = _get_waving_flag(home_code)
     f_away = _get_waving_flag(away_code)
-    if f_home: img.paste(f_home, (100, 250), f_home)
-    if f_away: img.paste(f_away, (W - 700, 250), f_away)
+    if f_home: img.paste(f_home, (100, 250 if not vertical else 350), f_home)
+    if f_away: img.paste(f_away, (W - 700, 250 if not vertical else 350), f_away)
 
-    _draw_text_shadow(draw, "HALF TIME", _f("BebasNeue-Regular.ttf", 140), 180, W//2, BRAND_COLORS["WHITE"])
-    _draw_text_shadow(draw, f"{sh} - {sa}", _f("BebasNeue-Regular.ttf", 240), 380, W//2, BRAND_COLORS["WHITE"])
-    _draw_text_shadow(draw, home.upper(), _f("Montserrat-Bold.ttf", 44), 330, 225, BRAND_COLORS["WHITE"], anchor="mm")
-    _draw_text_shadow(draw, away.upper(), _f("Montserrat-Bold.ttf", 44), 330, W - 225, BRAND_COLORS["WHITE"], anchor="mm")
+    _draw_text_shadow(draw, "HALF TIME", _f("BebasNeue-Regular.ttf", 140), 180 if not vertical else 300, W//2, BRAND_COLORS["WHITE"])
+    _draw_text_shadow(draw, f"{sh} - {sa}", _f("BebasNeue-Regular.ttf", 240), 380 if not vertical else 500, W//2, BRAND_COLORS["WHITE"])
+    _draw_text_shadow(draw, home.upper(), _f("Montserrat-Bold.ttf", 44), 330 if not vertical else 430, 225, BRAND_COLORS["WHITE"], anchor="mm")
+    _draw_text_shadow(draw, away.upper(), _f("Montserrat-Bold.ttf", 44), 330 if not vertical else 430, W - 225, BRAND_COLORS["WHITE"], anchor="mm")
 
     _draw_brand_logo(img, W - 250, 50, size=150)
     img.convert("RGB").save(output_path)
-    return output_//path
+    return output_path
 
-def draw_fulltime_image(home, away, sh, sa, comp, home_code="np", away_code="in", output_path=None):
+def draw_fulltime_image(home, away, sh, sa, comp, home_code="np", away_code="in", output_path=None, vertical=False):
+    W, H = (1080, 1920) if vertical else (1080, 1080)
     output_path = output_path or _out_path()
-    theme = get_theme(comp)
+    theme = get_//theme(comp)
     img = Image.new("RGBA", (W, H), BRAND_COLORS["BLACK"])
-    _draw_dynamic_bg(img, theme)
+    _draw_dynamic_bg(img, theme, W, H)
     draw = ImageDraw.Draw(img)
 
     f_home = _get_waving_flag(home_code)
     f_away = _get_waving_flag(away_code)
-    if f_home: img.paste(f_home, (100, 250), f_home)
-    if f_away: img.paste(f_//away, (W - 700, 250), f_away)
+    if f_home: img.paste(f_home, (100, 250 if not vertical else 350), f_home)
+    if f_away: img.paste(f_away, (W - 700, 250 if not vertical else 350), f_away)
 
-    _draw_text_shadow(draw, "FULL TIME", _f("BebasNeue-Regular.ttf", 140), 180, W//2, theme["accent"])
-    _draw_text_shadow(draw, f"{sh} - {sa}", _f("BebasNeue-Regular.ttf", 280), 380, W//2, BRAND_COLORS["WHITE"])
-    _draw_text_shadow(draw, home.upper(), _f("Montserrat-Bold.ttf", 44), 330, 225, BRAND_COLORS["WHITE"], anchor="mm")
-    _draw_text_shadow(draw, away.upper(), _f("Montserrat-Bold.ttf", 44), 330, W - 225, BRAND_COLORS["WHITE"], anchor="mm")
+    _draw_text_shadow(draw, "FULL TIME", _f("BebasNeue-Regular.ttf", 140), 180 if not vertical else 300, W//2, theme["accent"])
+    _draw_text_shadow(draw, f"{sh} - {sa}", _f("BebasNeue-Regular.ttf", 280), 380 if not vertical else 500, W//2, BRAND_COLORS["WHITE"])
+    _draw_text_shadow(draw, home.upper(), _f("Montserrat-Bold.ttf", 44), 330 if not vertical else 430, 225, BRAND_COLORS["WHITE"], anchor="mm")
+    _draw_text_shadow(draw, away.upper(), _f("Montserrat-Bold.ttf", 44), 330 if not vertical else 430, W - 225, BRAND_COLORS["WHITE"], anchor="mm")
 
     _draw_brand_logo(img, W - 250, 50, size=150)
     img.convert("RGB").save(output_path)
@@ -317,20 +320,21 @@ def draw_fulltime_image(home, away, sh, sa, comp, home_code="np", away_code="in"
 def draw_summary_image(home, away, events, comp, output_path=None):
     return draw_fulltime_image(home, away, "0", "0", comp, output_path=output_path)
 
-def draw_live_image(home, away, comp, home_code="np", away_code="in", output_path=None):
+def draw_live_image(home, away, comp, home_code="np", away_code="in", output_path=None, vertical=False):
+    W, H = (1080, 1920) if vertical else (1080, 1080)
     output_path = output_path or _out_path()
     theme = get_theme(comp)
     img = Image.new("RGBA", (W, H), BRAND_COLORS["BLACK"])
-    _draw_dynamic_bg(img, theme)
+    _draw_dynamic_bg(img, theme, W, H)
     draw = ImageDraw.Draw(img)
 
     f_home = _get_waving_flag(home_code)
     f_away = _get_waving_flag(away_code)
-    if f_home: img.paste(f_home, (W//2 - 300, 300), f_home)
-    if f_away: img.paste(f_away, (W//2 + 100, 300), f_away)
+    if f_home: img.paste(f_home, (W//2 - 300, 300 if not vertical else 400), f_home)
+    if f_away: img.paste(f_away, (W//2 + 100, 300 if not vertical else 400), f_away)
 
-    _draw_text_shadow(draw, "MATCH LIVE", _f("BebasNeue-Regular.ttf", 120), 200, W//2, theme["accent"])
-    _draw_text_shadow(draw, f"{home} VS {away}", _f("Montserrat-Bold.ttf", 64), 480, W//2, BRAND_COLORS["WHITE"])
+    _draw_text_shadow(draw, "MATCH LIVE", _f("BebasNeue-Regular.ttf", 120), 200 if not vertical else 300, W//2, theme["accent"])
+    _draw_text_shadow(draw, f"{home} VS {away}", _f("Montserrat-Bold.ttf", 64), 480 if not vertical else 580, W//2, BRAND_COLORS["WHITE"])
 
     _draw_brand_logo(img, W - 250, 50, size=150)
     img.convert("RGB").save(output_path)

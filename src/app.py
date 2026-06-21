@@ -7,6 +7,7 @@ from .image_generator import (
 )
 from .database import init_db
 from .scheduler import start_scheduler
+from .video_generator import generate_video
 
 load_dotenv()
 
@@ -248,7 +249,7 @@ def make_caption(event, data):
     }
     return captions.get(event, "Football update!")
 
-def make_event_image(event, data, output_path=None):
+def make_event_image(event, data, output_path=None, vertical=False):
     home = data.get("home", "Team 1")
     away = data.get("away", "Team 2")
     home_code = data.get("home_code", "np")
@@ -259,26 +260,26 @@ def make_event_image(event, data, output_path=None):
     sa = data.get("sa", "0")
     kw = {} if output_path is None else {"output_path": output_path}
     if event == "goal":
-        return draw_goal_card(data.get("scorer", "Unknown"), data.get("minute", "?"), home, home_code, player_img, **kw)
+        return draw_goal_card(data.get("scorer", "Unknown"), data.get("minute", "?"), home, home_code, player_img, comp, **kw, vertical=vertical)
     if event == "card":
         card_type = data.get("card_type", "YELLOW")
         player = data.get("player") or data.get("scorer", "Unknown")
         if card_type == "RED":
-            return draw_red_card(player, home, data.get("minute", "?"), home_code, player_img, **kw)
-        return draw_yellow_card(player, home, data.get("minute", "?"), home_code, player_img, **kw)
+            return draw_red_card(player, home, data.get("minute", "?"), home_code, player_img, comp, **kw, vertical=vertical)
+        return draw_yellow_card(player, home, data.get("minute", "?"), home_code, player_img, comp, **kw, vertical=vertical)
     if event == "sub":
         return draw_sub_card(
             data.get("player_off") or data.get("off", "Unknown"),
             data.get("player_on") or data.get("on", "Unknown"),
-            home, data.get("minute", "?"), home_code, None, player_img, **kw)
+            home, data.get("minute", "?"), home_code, None, player_img, comp, **kw, vertical=vertical)
     if event == "halftime":
-        return draw_halftime_image(home, away, sh, sa, comp, home_code, away_code, **kw)
+        return draw_halftime_image(home, away, sh, sa, comp, home_code, away_code, **kw, vertical=vertical)
     if event == "fulltime":
-        return draw_fulltime_image(home, away, sh, sa, comp, home_code, away_code, **kw)
+        return draw_fulltime_image(home, away, sh, sa, comp, home_code, away_code, **kw, vertical=vertical)
     if event == "live":
-        return draw_live_image(home, away, comp, home_code, away_code, **kw)
+        return draw_live_image(home, away, comp, home_code, away_code, **kw, vertical=vertical)
     if event in ("secondhalf", "summary"):
-        return draw_fulltime_image(home, away, sh, sa, comp, home_code, away_code, **kw)
+        return draw_fulltime_image(home, away, sh, sa, comp, home_code, away_code, **kw, vertical=vertical)
     return None
 
 _ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -321,20 +322,30 @@ def post_event():
         event = data.get("event", "")
     if not event: return jsonify({"error": "No event detected"}), 400
     try:
+        # Generate static image for FB Page
         img = make_event_image(event, data)
         if not img: return jsonify({"error": "Unknown event"}), 400
+        
+        # Generate vertical image for Reels
+        reel_img_path = make_event_image(event, data, vertical=True)
+        
         caption = make_caption(event, data)
         print(f"[post] posting {img} with caption: {caption[:50]}...")
         result = post_to_fb(img, caption)
         print(f"[post] result: {result}")
+        
+        # Process Video if requested
         video_result = None
         if include_video and "error" not in result:
             vid_path = img.replace(".png", ".mp4")
-            vid = generate_video(img, vid_path, caption)
+            # Use the vertical image as base for the reel
+            vid = generate_video(reel_img_path, vid_path, caption)
             if vid:
                 vr = post_to_fb(vid, caption + "\n\n#Highlight #Reels", is_video=True)
                 if "error" not in vr: video_result = vr
                 os.remove(vid)
+            if os.path.exists(reel_img_path):
+                os.remove(reel_img_path)
         os.remove(img)
         entry = {"event": event, "caption": caption, "data": data, "result": result, "video_result": video_result, "timestamp": __import__("datetime").datetime.now().isoformat()}
         hist = load_history(); hist.insert(0, entry); save_history(hist[:50])
