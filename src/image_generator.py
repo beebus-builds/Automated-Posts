@@ -1,5 +1,5 @@
 from PIL import Image, ImageDraw, ImageFont, ImageFilter, ImageOps
-import os, requests, io, tempfile, time, numpy as np
+import os, requests, io, tempfile, time, numpy as np, random
 from math import sin, pi, cos
 
 _ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
