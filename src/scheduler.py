@@ -126,8 +126,10 @@ def automation_job():
 def start_scheduler():
     """Initialize and start the background scheduler."""
     scheduler = BackgroundScheduler()
-    # Poll every 5 minutes for new events
-    scheduler.add_job(automation_job, 'interval', minutes=5)
+    # Get interval from env var, default to 5 minutes
+    interval = int(os.environ.get("POLL_INTERVAL_MINUTES", 5))
+    scheduler.add_job(automation_job, 'interval', minutes=interval)
     scheduler.start()
-    logger.info("Real-time Automation Scheduler started.")
+    logger.info(f"Real-time Automation Scheduler started. Polling every {interval} minutes.")
     return scheduler
+
