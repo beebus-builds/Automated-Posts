@@ -8,7 +8,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("Automation")
 
 class SportsAPIProvider:
-    """Real-time integration with API-Football via RapidAPI."""
+    """Optimized integration with API-Football via RapidAPI."""
     def __init__(self):
         self.api_key = os.environ.get("RAPIDAPI_KEY")
         self.base_url = "https://api-football-v1.p.rapidapi.com/v3"
@@ -19,36 +19,32 @@ class SportsAPIProvider:
 
     def get_latest_events(self):
         if not self.api_key:
-            logger.error("RAPIDAPI_KEY not found in environment variables!")
+            logger.error("RAPIDAPI_KEY missing!")
             return []
 
         try:
-            # 1. Fetch all live fixtures
-            logger.info("Fetching live matches...")
+            # Optimization: Fetch only the basic live list first
+            logger.info("Polling live matches...")
             res = requests.get(f"{self.base_url}/fixtures", params={"live": "all"}, headers=self.headers, timeout=15)
+            if res.status_code == 429:
+                logger.error("RATE LIMIT EXCEEDED: API is blocking requests. Switch to a paid plan or increase interval.")
+                return []
             if res.status_code != 200:
                 logger.error(f"API Error: {res.status_code}")
                 return []
 
-            data = res.json()
-            fixtures = data.get("response", [])
+            fixtures = res.json().get("response", [])
             events_to_post = []
 
             for fix in fixtures:
-                fix_id = fix["fixture"]["id"]
-                home_team = fix["teams"]["home"]
-                away_team = fix["teams"]["away"]
+                # Only process "High-Value" matches (World Cup, UCL, PL) to save API calls
+                comp_name = fix["league"]["name"].lower()
+                if not any(keyword in comp_name for keyword in ["world cup", "champions league", "premier league", "nepal"]):
+                    continue
                 
-                # Extract Goal Events
-                goals = fix.get("goals", [])
-                for goal in goals:
-                    # Unique ID for this goal: matchId_team_minute
-                    # API-Football goals usually have a unique ID in the event details, 
-                    # but we can construct one from fixture_id and timestamp/minute.
-                    # To be safe, we'll fetch detailed events for this fixture.
-                    pass
-
-                # Since the live endpoint gives a summary, we fetch detailed events for the match
+                fix_id = fix["fixture"]["id"]
+                
+                # Fetch detailed events ONLY for the filtered matches
                 events_res = requests.get(f"{self.base_url}/fixtures/events", params={"fixture": fix_id}, headers=self.headers, timeout=15)
                 if events_res.status_code == 200:
                     ev_data = events_res.json().get("response", [])
@@ -56,33 +52,22 @@ class SportsAPIProvider:
                         ev_type = ev["type"]
                         if ev_type not in ["Goal", "Card"]: continue
                         
-                        # Construct Unique Event ID
                         ev_id = f"real_{fix_id}_{ev['time']}_{ev['player']['id']}"
                         
-                        # Map API data to our Image Generator format
-                        event_map = {
-                            "Goal": "goal",
-                            "Card": "card"
-                        }
-                        
-                        # Determine if it's a Yellow or Red card
-                        detail_type = event_map[ev_type]
-                        if ev_type == "Card":
-                            detail_type = "red" if "Red" in ev["detail"] else "card"
+                        detail_type = "goal" if ev_type == "Goal" else ("red" if "Red" in ev["detail"] else "card")
 
                         events_to_post.append({
                             "id": ev_id,
                             "event": detail_type,
-                            "home": home_team["name"],
-                            "away": away_team["name"],
-                            "home_code": home_team.get("country", {}).get("code", "np"),
-                            "away_code": away_team.get("country", {}).get("code", "in"),
+                            "home": fix["teams"]["home"]["name"],
+                            "away": fix["teams"]["away"]["name"],
+                            "home_code": fix["teams"]["home"].get("country", {}).get("code", "np"),
+                            "away_code": fix["teams"]["away"].get("country", {}).get("code", "in"),
                             "scorer": ev["player"]["name"],
                             "minute": str(ev["time"]),
                             "comp": fix["league"]["name"],
                             "card_type": "RED" if detail_type == "red" else "YELLOW"
                         })
-
             return events_to_post
 
         except Exception as e:
@@ -90,19 +75,22 @@ class SportsAPIProvider:
             return []
 
 def automation_job():
-    """The background task that polls for events and posts to FB."""
+    """Background task to poll and post."""
     from src.app import app, make_event_image, make_caption, post_to_fb
     with app.app_context():
-        logger.info("Checking for real-world football events...")
+        logger.info("Automation Cycle Started...")
         provider = SportsAPIProvider()
         events = provider.get_latest_events()
         
+        if not events:
+            logger.info("No new high-value events found in this cycle.")
+            return
+
         for event_data in events:
             event_id = event_data["id"]
-            if is_event_posted(event_id):
-                continue
+            if is_event_posted(event_id): continue
             
-            logger.info(f"New Real Event: {event_data['event']} by {event_data['scorer']}!")
+            logger.info(f"🚨 NEW EVENT: {event_data['event']} by {event_data['scorer']}!")
             try:
                 img_path = make_event_image(event_data["event"], event_data)
                 if not img_path: continue
@@ -111,25 +99,21 @@ def automation_job():
                 result = post_to_fb(img_path, caption)
                 
                 if "error" not in result:
-                    logger.info(f"Successfully posted {event_id} to Facebook.")
+                    logger.info(f"SUCCESS: Posted {event_id}")
                     mark_event_posted(event_id, event_data["event"], caption)
                 else:
                     logger.error(f"FB Error: {result['error']}")
                 
                 import os
-                if os.path.exists(img_path):
-                    os.remove(img_path)
+                if os.path.exists(img_path): os.remove(img_path)
                     
             except Exception as e:
                 logger.error(f"Automation error: {e}")
 
 def start_scheduler():
-    """Initialize and start the background scheduler."""
     scheduler = BackgroundScheduler()
-    # Get interval from env var, default to 5 minutes
-    interval = int(os.environ.get("POLL_INTERVAL_MINUTES", 5))
+    interval = int(os.environ.get("POLL_INTERVAL_MINUTES", 15))
     scheduler.add_job(automation_job, 'interval', minutes=interval)
     scheduler.start()
-    logger.info(f"Real-time Automation Scheduler started. Polling every {interval} minutes.")
+    logger.info(f"Optimized Scheduler started. Polling every {interval} min.")
     return scheduler
-
