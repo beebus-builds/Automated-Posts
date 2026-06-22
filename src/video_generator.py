@@ -1,6 +1,5 @@
 import os
 from moviepy import ImageClip, ColorClip, CompositeVideoClip, AudioFileClip, TextClip
-from moviepy.video.fx import resize
 
 def generate_video(image_path, output_path, caption):
     """
@@ -23,7 +22,7 @@ def generate_video(image_path, output_path, caption):
         return 1 + 0.03 * t  # Zoom in by 3% per second
     
     # Note: MoviePy's resize can be used with a function for animation
-    zoomed_img = base_img.resize(zoom_effect).set_position('center')
+    zoomed_img = base_img.resized(zoom_effect).set_position('center')
     
     # 4. Add Animated Caption (Simple Fade-in)
     # In a real env, we'd use a fancy font. Here we use a basic TextClip.
