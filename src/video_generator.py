@@ -1,6 +1,6 @@
 import os
-from moviepy.editor import ImageClip, ColorClip, CompositeVideoClip, AudioFileClip, TextClip, CompositeVideoClip
-from moviepy.video.fx.all import resize
+from moviepy import ImageClip, ColorClip, CompositeVideoClip, AudioFileClip, TextClip
+from moviepy.video.fx import resize
 
 def generate_video(image_path, output_path, caption):
     """
