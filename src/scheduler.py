@@ -1,6 +1,7 @@
 import logging
 import os
 import requests
+from concurrent.futures import ThreadPoolExecutor
 from apscheduler.schedulers.background import BackgroundScheduler
 from src.database import is_event_posted, mark_event_posted
 
@@ -8,7 +9,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("Automation")
 
 class SportsAPIProvider:
-    """Optimized integration with API-Football via RapidAPI."""
+    """Real-time integration with API-Football via RapidAPI."""
     def __init__(self):
         self.api_key = os.environ.get("RAPIDAPI_KEY")
         self.base_url = "https://api-football-v1.p.rapidapi.com/v3"
@@ -23,11 +24,10 @@ class SportsAPIProvider:
             return []
 
         try:
-            # Optimization: Fetch only the basic live list first
             logger.info("Polling live matches...")
             res = requests.get(f"{self.base_url}/fixtures", params={"live": "all"}, headers=self.headers, timeout=15)
             if res.status_code == 429:
-                logger.error("RATE LIMIT EXCEEDED: API is blocking requests. Switch to a paid plan or increase interval.")
+                logger.error("RATE LIMIT EXCEEDED")
                 return []
             if res.status_code != 200:
                 logger.error(f"API Error: {res.status_code}")
@@ -37,14 +37,11 @@ class SportsAPIProvider:
             events_to_post = []
 
             for fix in fixtures:
-                # Only process "High-Value" matches (World Cup, UCL, PL) to save API calls
                 comp_name = fix["league"]["name"].lower()
                 if not any(keyword in comp_name for keyword in ["world cup", "champions league", "premier league", "nepal"]):
                     continue
                 
                 fix_id = fix["fixture"]["id"]
-                
-                # Fetch detailed events ONLY for the filtered matches
                 events_res = requests.get(f"{self.base_url}/fixtures/events", params={"fixture": fix_id}, headers=self.headers, timeout=15)
                 if events_res.status_code == 200:
                     ev_data = events_res.json().get("response", [])
@@ -53,7 +50,6 @@ class SportsAPIProvider:
                         if ev_type not in ["Goal", "Card"]: continue
                         
                         ev_id = f"real_{fix_id}_{ev['time']}_{ev['player']['id']}"
-                        
                         detail_type = "goal" if ev_type == "Goal" else ("red" if "Red" in ev["detail"] else "card")
 
                         events_to_post.append({
@@ -74,46 +70,81 @@ class SportsAPIProvider:
             logger.error(f"API Provider Exception: {e}")
             return []
 
-def automation_job():
-    """Background task to poll and post."""
+    def get_recent_results(self, limit=10):
+        try:
+            res = requests.get(f"{self.base_url}/fixtures", params={"last": limit}, headers=self.headers, timeout=15)
+            if res.status_code != 200: return []
+            
+            fixtures = res.json().get("response", [])
+            results = []
+            for fix in fixtures:
+                results.append({
+                    "id": f"hist_{fix['fixture']['id']}",
+                    "event": "fulltime",
+                    "home": fix["teams"]["home"]["name"],
+                    "away": fix["teams"]["away"]["name"],
+                    "home_code": fix["teams"]["home"].get("country", {}).get("code", "np"),
+                    "away_code": fix["teams"]["away"].get("country", {}).get("code", "in"),
+                    "sh": str(fix["goals"]["home"]),
+                    "sa": str(fix["goals"]["away"]),
+                    "comp": fix["league"]["name"]
+                })
+            return results
+        except Exception as e:
+            logger.error(f"History Fetch Error: {e}")
+            return []
+
+def process_event(event_data):
+    """Helper to handle a single event post."""
     from src.app import app, make_event_image, make_caption, post_to_fb
     with app.app_context():
-        logger.info("Automation Cycle Started...")
-        provider = SportsAPIProvider()
-        events = provider.get_latest_events()
+        event_id = event_data["id"]
+        if is_event_posted(event_id): return False
         
-        if not events:
-            logger.info("No new high-value events found in this cycle.")
-            return
-
-        for event_data in events:
-            event_id = event_data["id"]
-            if is_event_posted(event_id): continue
-            
-            logger.info(f"🚨 NEW EVENT: {event_data['event']} by {event_data['scorer']}!")
-            try:
-                img_path = make_event_image(event_data["event"], event_data)
-                if not img_path: continue
-                
-                caption = make_caption(event_data["event"], event_data)
-                result = post_to_fb(img_path, caption)
-                
-                if "error" not in result:
-                    logger.info(f"SUCCESS: Posted {event_id}")
-                    mark_event_posted(event_id, event_data["event"], caption)
-                else:
-                    logger.error(f"FB Error: {result['error']}")
-                
+        try:
+            img_path = make_event_image(event_data["event"], event_data)
+            if not img_path: return False
+            caption = make_caption(event_data["event"], event_data)
+            result = post_to_fb(img_path, caption)
+            if "error" not in result:
+                mark_event_posted(event_id, event_data["event"], caption)
                 import os
                 if os.path.exists(img_path): os.remove(img_path)
-                    
-            except Exception as e:
-                logger.error(f"Automation error: {e}")
+                return True
+        except Exception as e:
+            logger.error(f"Processing error for {event_id}: {e}")
+    return False
+
+def automation_job():
+    """Background task using ThreadPoolExecutor for faster processing."""
+    logger.info("Checking for new sports events...")
+    provider = SportsAPIProvider()
+    events = provider.get_latest_events()
+    
+    if not events:
+        logger.info("No new high-value events found.")
+        return
+
+    # la-cerne fast-processing: Process multiple goals in parallel
+    with ThreadPoolExecutor(max_workers=5) as executor:
+        executor.map(process_event, events)
+
+def sync_history_job():
+    """Fetch the last 10 games and post them to FB in parallel."""
+    provider = SportsAPIProvider()
+    recent_games = provider.get_recent_results(limit=10)
+    
+    with ThreadPoolExecutor(max_workers=5) as executor:
+        results = list(executor.map(process_event, recent_games))
+    
+    posted_count = sum(1 for r in results if r)
+    logger.info(f"History Sync complete. Posted {posted_count} games.")
+    return posted_count
 
 def start_scheduler():
     scheduler = BackgroundScheduler()
     interval = int(os.environ.get("POLL_INTERVAL_MINUTES", 15))
     scheduler.add_job(automation_job, 'interval', minutes=interval)
     scheduler.start()
-    logger.info(f"Optimized Scheduler started. Polling every {interval} min.")
+    logger.info(f"Turbo-charged Scheduler started. Polling every {interval} min.")
     return scheduler

@@ -362,6 +362,15 @@ def post_event():
         return jsonify({"success": True, "post_id": result.get("post_id"), "caption": caption, "fb_url": f"https://www.facebook.com/{PAGE_ID}/posts/{result.get('post_id','').split('_')[-1] if '_' in result.get('post_id','') else result.get('post_id')}", "video_posted": video_result is not None})
     except Exception as e: return jsonify({"error": str(e)}), 500
 
+@app.route("/api/sync-history", methods=["POST"])
+def sync_history():
+    try:
+        from src.scheduler import sync_history_job
+        count = sync_history_job()
+        return jsonify({"success": True, "posted_count": count})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
 @app.route("/api/history")
 def history(): return jsonify(load_history())
 
