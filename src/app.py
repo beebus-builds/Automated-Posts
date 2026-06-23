@@ -323,6 +323,7 @@ def serve_preview(name):
 def post_event():
     data = request.get_json() or request.form.to_dict()
     text = data.get("text")
+    description = data.get("description") # New: Custom description field
     include_video = data.get("video", "").lower() == "true"
     if text:
         event, parsed_data = smart_parse(text)
@@ -331,23 +332,20 @@ def post_event():
         event = data.get("event", "")
     if not event: return jsonify({"error": "No event detected"}), 400
     try:
-        # Generate static image for FB Page
         img = make_event_image(event, data)
         if not img: return jsonify({"error": "Unknown event"}), 400
         
-        # Generate vertical image for Reels
-        reel_img_path = make_event_image(event, data, vertical=True)
+        # Use custom description if provided, otherwise generate one
+        caption = description if description else make_caption(event, data)
         
-        caption = make_caption(event, data)
         print(f"[post] posting {img} with caption: {caption[:50]}...")
         result = post_to_fb(img, caption)
         print(f"[post] result: {result}")
         
-        # Process Video if requested
         video_result = None
         if include_video and "error" not in result:
             vid_path = img.replace(".png", ".mp4")
-            # Use the vertical image as base for the reel
+            reel_img_path = make_event_image(event, data, vertical=True)
             vid = generate_video(reel_img_path, vid_path, caption)
             if vid:
                 vr = post_to_fb(vid, caption + "\n\n#Highlight #Reels", is_video=True)
@@ -361,6 +359,7 @@ def post_event():
         if "error" in result: return jsonify({"error": result["error"], "caption": caption}), 500
         return jsonify({"success": True, "post_id": result.get("post_id"), "caption": caption, "fb_url": f"https://www.facebook.com/{PAGE_ID}/posts/{result.get('post_id','').split('_')[-1] if '_' in result.get('post_id','') else result.get('post_id')}", "video_posted": video_result is not None})
     except Exception as e: return jsonify({"error": str(e)}), 500
+
 
 @app.route("/api/sync-history", methods=["POST"])
 def sync_history():
