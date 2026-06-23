@@ -1,8 +1,60 @@
+# API Keys & Secrets
 .env
+.env.local
+.env.production
+.env.development
+
+# Python
 __pycache__/
 *.pyc
+*.pyo
+*.egg-info/
+dist/
+build/
+*.egg
+.venv/
+venv/
+
+# Node
+node_modules/
+frontend/node_modules/
+web/node_modules/
+frontend/dist/
+web/.next/
+web/out/
+frontend/release/
+
+# Electron
+frontend/release/
+*.exe
+*.dmg
+*.AppImage
+
+# Capacitor
+frontend/android/
+frontend/ios/
+frontend/capacitor/.gradle/
+frontend/capacitor/build/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Flask
+instance/
+*.db
+history.json
+match_state.json
 post_image.png
 
+# Generated
 fonts/
 previews/
-post_image.png
+post_*.png

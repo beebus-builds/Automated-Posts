@@ -4,3 +4,8 @@ gunicorn
 requests
 python-dotenv
 Pillow
+numpy
+psycopg2-binary
+sqlalchemy
+apscheduler
+moviepy

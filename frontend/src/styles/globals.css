@@ -1,0 +1,40 @@
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+:root {
+  --navy: #1a2332;
+  --navy-dark: #0d1419;
+  --red: #dc143c;
+  --gold: #fbbf24;
+  --surface: #131d2b;
+  --text: #f1f5f9;
+  --text-dim: #94a3b8;
+  --border: rgba(255, 255, 255, 0.08);
+  --glow: rgba(220, 20, 60, 0.25);
+  --font: 'Inter', system-ui, -apple-system, sans-serif;
+}
+
+html, body {
+  font-family: var(--font);
+  background: var(--navy-dark);
+  color: var(--text);
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+}
+
+body {
+  background-image: radial-gradient(circle at center, rgba(220, 20, 60, 0.05), transparent);
+}
+
+a { color: inherit; text-decoration: none; }
+
+button { font-family: inherit; }
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes ticker {
+  0% { transform: translateX(100%); }
+  100% { transform: translateX(-100%); }
+}

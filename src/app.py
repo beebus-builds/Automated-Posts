@@ -1,36 +1,28 @@
-import os, json, requests, re, shutil
-from flask import Flask, request, jsonify, render_template, send_file
+import os, json
+from flask import Flask, request, jsonify, send_file, send_from_directory
+from flask_cors import CORS
 from dotenv import load_dotenv
-from .image_generator import (
-    draw_goal_card, draw_yellow_card, draw_red_card, draw_sub_card,
-    draw_halftime_image, draw_fulltime_image, draw_summary_image, draw_live_image
-)
-from .database import init_db
-from .scheduler import start_scheduler
-from .video_generator import generate_video
+import requests
 
 load_dotenv()
 
 app = Flask(__name__, static_folder="static", static_url_path="")
+CORS(app, resources={r"/api/*": {"origins": "*"}})
 
 TOKEN = os.environ.get("FB_PAGE_ACCESS_TOKEN")
 PAGE_ID = os.environ.get("FB_PAGE_ID")
-HISTORY_FILE = "history.json"
 
-# Auto-resolve to Page Access Token if a User Token was provided
+# Auto-resolve to Page Access Token
 if TOKEN and PAGE_ID:
     try:
-        r = requests.get(f"https://graph.facebook.com/v20.0/me/accounts", params={"access_token": TOKEN}, timeout=10)
-        accounts = r.json().get("data", [])
-        for acc in accounts:
+        r = requests.get("https://graph.facebook.com/v20.0/me/accounts", params={"access_token": TOKEN}, timeout=10)
+        for acc in r.json().get("data", []):
             if acc.get("id") == PAGE_ID:
-                page_token = acc.get("access_token")
-                if page_token:
-                    TOKEN = page_token
-                    break
-    except:
-        pass
+                pt = acc.get("access_token")
+                if pt: TOKEN = pt; break
+    except: pass
 
+HISTORY_FILE = "history.json"
 def load_history():
     try:
         with open(HISTORY_FILE) as f: return json.load(f)
@@ -39,367 +31,62 @@ def load_history():
 def save_history(h):
     with open(HISTORY_FILE, "w") as f: json.dump(h, f, indent=2)
 
-def post_to_fb(img_path, caption, is_video=False):
-    if not TOKEN or not PAGE_ID:
-        return {"error": "Missing FB_PAGE_ACCESS_TOKEN or FB_PAGE_ID"}
-    try:
-        url = f"https://graph.facebook.com/v20.0/{PAGE_ID}/{'videos' if is_video else 'photos'}"
-        with open(img_path, "rb") as f:
-            data = {"access_token": TOKEN}
-            if is_video: data["description"] = caption
-            else: data["caption"] = caption
-            r = requests.post(url, files={"source": f}, data=data, timeout=30)
-        if r.status_code == 200:
-            return {"id": r.json().get("id"), "post_id": r.json().get("post_id")}
-        return {"error": r.json().get("error", {}).get("message", str(r.json()))}
-    except Exception as e:
-        return {"error": str(e)}
-
-def generate_video(img_path, output_path, caption):
-    import subprocess, shutil
-    ffmpeg = shutil.which("ffmpeg")
-    if not ffmpeg: return None
-    safe = "".join(c for c in caption if c.isalnum() or c in " .,!?-:;")[:80]
-    cmd = [
-        ffmpeg, "-y", "-loop", "1", "-i", img_path,
-        "-vf", "zoompan=z='if(lte(zoom,1.08),zoom+0.0015,1.08)':d=200:fps=24",
-        "-c:v", "libx264", "-t", "8", "-pix_fmt", "yuv420p", "-preset", "fast", "-movflags", "+faststart", output_path
-    ]
-    try:
-        subprocess.run(cmd, capture_output=True, timeout=30)
-        if os.path.exists(output_path) and os.path.getsize(output_path) > 4096:
-            return output_path
-    except: pass
-    return None
-
-def smart_parse(text):
-    original = text
-    text_lower = text.lower().strip()
-
-    known_teams = [
-        "Argentina", "Brazil", "Portugal", "Spain", "France", "Germany",
-        "Italy", "Netherlands", "England", "Belgium", "Croatia", "Denmark",
-        "Switzerland", "Uruguay", "Colombia", "Japan", "South Korea",
-        "Senegal", "Morocco", "Nigeria", "Cameroon", "Ghana", "Algeria",
-        "Tunisia", "Egypt", "Ivory Coast", "Congo DR", "Mali", "Burkina Faso",
-        "USA", "Mexico", "Canada", "Costa Rica", "Jamaica", "Honduras",
-        "Australia", "New Zealand", "Saudi Arabia", "Iran", "Qatar",
-        "Turkey", "Poland", "Russia", "Czech Republic", "Sweden", "Norway",
-        "Scotland", "Wales", "Austria", "Hungary", "Serbia", "Romania",
-        "Ukraine", "Greece", "Chile", "Peru", "Ecuador", "Paraguay",
-        "Bolivia", "Venezuela", "South Africa", "Zambia", "Zimbabwe",
-        "Angola", "Cape Verde", "Guinea", "Togo", "Benin", "Mozambique",
-        "Tanzania", "Uganda", "Kenya", "Ethiopia", "Sudan",
-        "Croatia", "Slovakia", "Slovenia", "Bosnia", "Montenegro",
-        "Albania", "North Macedonia", "Northern Ireland", "Republic of Ireland",
-        "Fiji", "Samoa", "Papua New Guinea", "Tahiti", "Solomon Islands",
-        "India", "China", "Thailand", "Vietnam", "Indonesia", "Malaysia",
-        "Philippines", "Singapore", "Iraq", "Syria", "Lebanon", "Jordan",
-        "Oman", "Bahrain", "Kuwait", "UAE", "Yemen", "Palestine",
-        "Korea DPR", "Hong Kong", "Chinese Taipei", "Myanmar", "Cambodia",
-        "Laos", "Mongolia", "Bhutan", "Nepal", "Bangladesh", "Sri Lanka",
-        "Maldives", "Brunei", "Timor-Leste", "Macau", "Guam",
-    ]
-    known_lower = {t.lower(): t for t in known_teams}
-
-    data = {"comp": "FIFA World Cup 2026", "sh": 0, "sa": 0, "home": "", "away": ""}
-
-    # Extract teams: support "TeamA vs TeamB", "TeamA v TeamB", "TeamA - TeamB"
-    team_delimiters = [r"\s+vs\.?\s+", r"\sv\.\s+", r"\s+&\s+", r"\s+and\s+", r"\s*[-–]\s*"]
-    for delim in team_delimiters:
-        m = re.search(rf"(\w[\w\s]*?){delim}(\w[\w\s]*?)$", text_lower)
-        if m:
-            a, b = m.group(1).strip(), m.group(2).strip()
-            if a and b:
-                data["home"] = known_lower.get(a, a.title())
-                data["away"] = known_lower.get(b, b.title())
-                break
-
-    # Also try to extract teams from score context: "TeamA 1-0 TeamB"
-    if not data["home"] or not data["away"]:
-        m = re.match(r"([a-zA-Z\s]+?)\s+(\d+)\s*[-–]\s*(\d+)\s+([a-zA-Z\s]+)", text_lower)
-        if m:
-            a, sh, sa, b = m.group(1).strip(), m.group(2), m.group(3), m.group(4).strip()
-            data["home"] = known_lower.get(a, a.title())
-            data["away"] = known_lower.get(b, b.title())
-            data["sh"] = int(sh)
-            data["sa"] = int(sa)
-
-    # If still no teams, try matching known team names in text
-    if not data["home"] or not data["away"]:
-        found = [known_lower[t] for t in known_lower if t in text_lower]
-        if len(found) >= 2:
-            data["home"] = found[0]
-            data["away"] = found[1]
-        elif len(found) == 1:
-            data["home"] = found[0]
-            data["away"] = "Opponent"
-
-    # Fallback defaults
-    if not data["home"]: data["home"] = "Team 1"
-    if not data["away"]: data["away"] = "Team 2"
-
-    # Score
-    if "sh" not in data or (data["sh"] == 0 and data["sa"] == 0):
-        score_match = re.search(r"(\d+)\s*[-–]\s*(\d+)", text_lower)
-        if score_match:
-            data["sh"] = int(score_match.group(1))
-            data["sa"] = int(score_match.group(2))
-
-    # Minute
-    min_match = re.search(r"(\d+)\s*(?:'|min|th\s*minute|minute)", text_lower)
-    data["minute"] = min_match.group(1) if min_match else "?"
-
-    # Determine event type
-    if any(k in text_lower for k in ["goal", "scored", "scores", "goalll"]):
-        event = "goal"
-        # Scorer: try "by X", "X scores", "X goal", or capitalized name near minute
-        scorer = None
-        scorer_patterns = [
-            r"(?:by|scored\s*by|goal\s*by)\s+([A-Za-z\s.]+?)(?:\s+\d+|'|\s*$)",
-            r"([A-Z][a-z]+(?:\s[A-Z][a-z]+)?)\s+(?:scores|goal|with|makes)",
-            r"([A-Z][a-z]+(?:\s[A-Z][a-z]+)?)\s+\d+",
-        ]
-        for pat in scorer_patterns:
-            m = re.search(pat, original)
-            if m:
-                cand = m.group(1).strip()
-                if len(cand) > 2 and cand.lower() not in ["the", "and", "for", "vs", "goal"]:
-                    scorer = cand
-                    break
-        # Fallback: take capitalized word before the score
-        if not scorer or scorer == "Unknown":
-            m = re.search(r"([A-Z][a-z]+)\s+\d+\s*[-–]\s*\d+", original)
-            if m:
-                scorer = m.group(1).strip()
-        data["scorer"] = scorer if scorer else "Unknown"
-        data["minute"] = data.get("minute", "?")
-        assist_match = re.search(r"(?:assist|assisted\s*by)\s+([A-Za-z\s.]+?)(?:\s*$|\s+\d+)", original)
-        data["assist"] = assist_match.group(1).strip().title() if assist_match else None
-        # Determine which team scored based on who has the lead
-        if data["sh"] > data["sa"]:
-            data["team_side"] = "home"
-        elif data["sa"] > data["sh"]:
-            data["team_side"] = "away"
-        else:
-            data["team_side"] = "home"
-
-    elif any(k in text_lower for k in ["card", "yellow", "red", "booking"]):
-        event = "card"
-        data["card_type"] = "RED" if "red" in text_lower else "YELLOW"
-        # Player name: often capitalized, before "card"/"gets"/"received"/"booking"
-        player_match = re.search(r"([A-Z][a-z]+(?:\s[A-Z][a-z]+)?)\s+(?:gets|received|shown|card|booking|yellow|red)", original)
-        data["player"] = player_match.group(1).strip() if player_match else "Unknown"
-        data["minute"] = data.get("minute", "?")
-        data["team"] = data["home"]
-
-    elif any(k in text_lower for k in ["sub", "substitution", "replaced", "comes on", "comes off"]):
-        event = "sub"
-        data["minute"] = data.get("minute", "?")
-        data["team"] = data["home"]
-        off_match = re.search(r"([A-Z][a-z]+(?:\s[A-Z][a-z]+)?)\s+off", original)
-        on_match = re.search(r"([A-Z][a-z]+(?:\s[A-Z][a-z]+)?)\s+on", original)
-        data["off"] = off_match.group(1).strip() if off_match else "Unknown"
-        data["on"] = on_match.group(1).strip() if on_match else "Unknown"
-
-    elif re.search(r"half\s*time|halftime|half-time", text_lower):
-        event = "halftime"
-        data["scorers"] = ""
-
-    elif re.search(r"full\s*time|fulltime|full-time|final\s*score|match\s*ended", text_lower):
-        event = "fulltime"
-        data["scorers"] = ""
-
-    elif any(k in text_lower for k in ["live", "kickoff", "starts", "underway", "1st half", "first half"]):
-        event = "live"
-        data["time"] = "Now"
-
-    elif re.search(r"2nd half|second half", text_lower):
-        event = "secondhalf"
-
-    else:
-        event = "summary"
-        data["events"] = original
-
-    return event, data
-
-@app.route("/api/parse", methods=["POST"])
-def parse_text():
-    text = request.json.get("text", "")
-    event, data = smart_parse(text)
-    return jsonify({"event": event, "data": data})
-
-@app.route("/")
-def index(): return render_template("dashboard.html")
-
-@app.route("/vault")
-def vault(): return render_template("vault.html")
-
-@app.route("/community")
-def community(): return render_template("community.html")
-
-@app.route("/guidelines")
-def guidelines(): return render_template("guidelines.html")
-
-def make_caption(event, data):
-    home = data.get("home", "Team 1")
-    away = data.get("away", "Team 2")
-    sh = data.get("sh", 0)
-    sa = data.get("sa", 0)
-    captions = {
-        "goal": f"GOAL! {data.get('scorer', '?')} {data.get('minute', '?')}'\n{home} {sh} - {sa} {away}" + (f"\nAssist: {data.get('assist')}" if data.get('assist') else ""),
-        "card": f"{'RED' if data.get('card_type')=='RED' else 'YELLOW'} CARD\n{data.get('player')} ({data.get('team')})",
-        "sub": f"SUBSTITUTION\n{data.get('player_off') or data.get('off', '?')} OFF, {data.get('player_on') or data.get('on', '?')} ON ({data.get('team')})",
-        "live": f"The match is underway! {home} vs {away}",
-        "halftime": f"HALF TIME\n{home} {sh} - {sa} {away}",
-        "secondhalf": f"SECOND HALF\n{home} {sh} - {sa} {away}",
-        "fulltime": f"FULL TIME\n{home} {sh} - {sa} {away}",
-        "summary": f"MATCH SUMMARY\n{home} {sh} - {sa} {away}",
-    }
-    return captions.get(event, "Football update!")
-
-def make_event_image(event, data, output_path=None, vertical=False):
-    home = data.get("home", "Team 1")
-    away = data.get("away", "Team 2")
-    home_code = data.get("home_code", "np")
-    away_code = data.get("away_code", "in")
-    player_img = data.get("player_img")
-    comp = data.get("comp", "World Cup 2026")
-    sh = data.get("sh", "0")
-    sa = data.get("sa", "0")
-    kw = {} if output_path is None else {"output_path": output_path}
-    if event == "goal":
-        return draw_goal_card(data.get("scorer", "Unknown"), data.get("minute", "?"), home, home_code, player_img, comp, **kw, vertical=vertical)
-    if event == "card":
-        card_type = data.get("card_type", "YELLOW")
-        player = data.get("player") or data.get("scorer", "Unknown")
-        if card_type == "RED":
-            return draw_red_card(player, home, data.get("minute", "?"), home_code, player_img, comp, **kw, vertical=vertical)
-        return draw_yellow_card(player, home, data.get("minute", "?"), home_code, player_img, comp, **kw, vertical=vertical)
-    if event == "sub":
-        return draw_sub_card(
-            data.get("player_off") or data.get("off", "Unknown"),
-            data.get("player_on") or data.get("on", "Unknown"),
-            home, data.get("minute", "?"), home_code, None, player_img, comp, **kw, vertical=vertical)
-    if event == "halftime":
-        return draw_halftime_image(home, away, sh, sa, comp, home_code, away_code, **kw, vertical=vertical)
-    if event == "fulltime":
-        return draw_fulltime_image(home, away, sh, sa, comp, home_code, away_code, **kw, vertical=vertical)
-    if event == "live":
-        return draw_live_image(home, away, comp, home_code, away_code, **kw, vertical=vertical)
-    if event in ("secondhalf", "summary"):
-        return draw_fulltime_image(home, away, sh, sa, comp, home_code, away_code, **kw, vertical=vertical)
-    return None
-
-_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-PREVIEW_DIR = os.path.join(_ROOT, "previews")
-os.makedirs(PREVIEW_DIR, exist_ok=True)
-
-@app.route("/api/latest-event")
-def get_latest_event():
-    try:
-        from src.scheduler import SportsAPIProvider
-        provider = SportsAPIProvider()
-        events = provider.get_latest_events()
-        if not events:
-            return jsonify({"error": "No live events found right now"}), 404
-        
-        # Return the most recent/first event
-        event = events[0]
-        return jsonify(event)
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
-@app.route("/api/trigger-update", methods=["POST"])
-def trigger_update():
-    try:
-        from src.scheduler import automation_job
-        posted_count = automation_job()
-        if posted_count > 0:
-            return jsonify({"success": True, "posted_count": posted_count, "message": f"Posted {posted_count} event(s) to Facebook!"})
-        return jsonify({"success": True, "posted_count": 0, "message": "No new events found."})
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
-@app.route("/api/preview", methods=["POST"])
-def preview():
-    data = request.get_json()
-    if not data: return jsonify({"error": "No data"}), 400
-    event = data.get("event", "")
-    if not event: return jsonify({"error": "No event"}), 400
-    try:
-        img_path = make_event_image(event, data)
-        if not img_path: return jsonify({"error": "Unknown event"}), 400
-        caption = make_caption(event, data)
-        name = "pv_" + os.path.basename(img_path)
-        dst = os.path.join(PREVIEW_DIR, name)
-        shutil.move(img_path, dst)
-        return jsonify({"preview_url": "/api/image/" + name, "caption": caption, "event": event})
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
-@app.route("/api/image/<name>")
-def serve_preview(name):
-    path = os.path.join(PREVIEW_DIR, name)
-    if not os.path.exists(path):
-        return jsonify({"error": "not found"}), 404
-    return send_file(path, mimetype="image/png")
+@app.route("/api/health")
+def health():
+    return jsonify({"status": "ok", "service": "Match Day Poster"})
 
 @app.route("/api/post", methods=["POST"])
-def post_event():
-    data = request.get_json() or request.form.to_dict()
-    text = data.get("text")
-    description = data.get("description") # New: Custom description field
-    include_video = data.get("video", "").lower() == "true"
-    if text:
-        event, parsed_data = smart_parse(text)
-        data = parsed_data
-    else:
-        event = data.get("event", "")
-    if not event: return jsonify({"error": "No event detected"}), 400
-    try:
-        img = make_event_image(event, data)
-        if not img: return jsonify({"error": "Unknown event"}), 400
-        
-        # Use custom description if provided, otherwise generate one
-        caption = description if description else make_caption(event, data)
-        
-        print(f"[post] posting {img} with caption: {caption[:50]}...")
-        result = post_to_fb(img, caption)
-        print(f"[post] result: {result}")
-        
-        video_result = None
-        if include_video and "error" not in result:
-            vid_path = img.replace(".png", ".mp4")
-            reel_img_path = make_event_image(event, data, vertical=True)
-            vid = generate_video(reel_img_path, vid_path, caption)
-            if vid:
-                vr = post_to_fb(vid, caption + "\n\n#Highlight #Reels", is_video=True)
-                if "error" not in vr: video_result = vr
-                os.remove(vid)
-            if os.path.exists(reel_img_path):
-                os.remove(reel_img_path)
-        os.remove(img)
-        entry = {"event": event, "caption": caption, "data": data, "result": result, "video_result": video_result, "timestamp": __import__("datetime").datetime.now().isoformat()}
-        hist = load_history(); hist.insert(0, entry); save_history(hist[:50])
-        if "error" in result: return jsonify({"error": result["error"], "caption": caption}), 500
-        return jsonify({"success": True, "post_id": result.get("post_id"), "caption": caption, "fb_url": f"https://www.facebook.com/{PAGE_ID}/posts/{result.get('post_id','').split('_')[-1] if '_' in result.get('post_id','') else result.get('post_id')}", "video_posted": video_result is not None})
-    except Exception as e: return jsonify({"error": str(e)}), 500
+def post():
+    """Accept image + caption, post to Facebook. Returns post ID."""
+    if not TOKEN or not PAGE_ID:
+        return jsonify({"error": "FB_PAGE_ACCESS_TOKEN or FB_PAGE_ID not set"}), 500
 
+    caption = request.form.get("caption", "")
+    is_video = request.form.get("video", "").lower() == "true"
 
-@app.route("/api/sync-history", methods=["POST"])
-def sync_history():
+    if "image" not in request.files:
+        return jsonify({"error": "No image file provided. Send multipart/form-data with field 'image'"}), 400
+
+    f = request.files["image"]
+    if f.filename == "":
+        return jsonify({"error": "Empty filename"}), 400
+
     try:
-        from src.scheduler import sync_history_job
-        count = sync_history_job()
-        return jsonify({"success": True, "posted_count": count})
+        url = f"https://graph.facebook.com/v20.0/{PAGE_ID}/{'videos' if is_video else 'photos'}"
+        data = {"access_token": TOKEN}
+        if is_video: data["description"] = caption
+        else: data["caption"] = caption
+
+        r = requests.post(url, files={"source": (f.filename, f.stream, f.content_type)}, data=data, timeout=60)
+        if r.status_code == 200:
+            j = r.json()
+            post_id = j.get("post_id", j.get("id", ""))
+            fb_url = f"https://www.facebook.com/{PAGE_ID}/posts/{post_id.split('_')[-1] if '_' in post_id else post_id}"
+
+            entry = {"post_id": post_id, "caption": caption, "timestamp": __import__("datetime").datetime.now().isoformat(), "is_video": is_video}
+            hist = load_history(); hist.insert(0, entry); save_history(hist[:50])
+
+            return jsonify({"success": True, "post_id": post_id, "fb_url": fb_url, "caption": caption})
+        return jsonify({"error": r.json().get("error", {}).get("message", str(r.text))}), 400
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
 @app.route("/api/history")
-def history(): return jsonify(load_history())
+def history():
+    return jsonify(load_history())
+
+FRONTEND_DIST = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "frontend", "dist")
+
+@app.route("/", defaults={"path": ""})
+@app.route("/<path:path>")
+def serve_frontend(path):
+    if path and os.path.exists(os.path.join(FRONTEND_DIST, path)):
+        return send_from_directory(FRONTEND_DIST, path)
+    index = os.path.join(FRONTEND_DIST, "index.html")
+    if os.path.exists(index):
+        return send_file(index)
+    return jsonify({"error": "Frontend not built. Run: cd frontend && npm run build"}), 404
 
 if __name__ == "__main__":
-    init_db()
-    start_scheduler()
-    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)), debug=True)
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port, debug=True)
