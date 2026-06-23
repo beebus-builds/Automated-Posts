@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Community | Match Day</title>
+<title>Guidelines | Match Day</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
 <style>
@@ -34,13 +34,12 @@ body {
 .page-header h2 { font-family: 'Playfair Display', serif; font-size: clamp(32px, 8vw, 54px); margin-bottom: 15px; }
 .page-header p { color: var(--text-dim); font-size: clamp(14px, 3vw, 20px); }
 
-.community-card { background: var(--surface); padding: clamp(20px, 4vw, 30px); border-radius: 24px; border: 1px solid var(--border); margin-bottom: 24px; }
-.community-card h3 { color: var(--red); font-size: clamp(18px, 3.5vw, 22px); margin-bottom: 15px; display: flex; align-items: center; gap: 10px; }
-.community-card p { color: var(--text-dim); line-height: 1.7; font-size: clamp(14px, 2.5vw, 16px); }
-.community-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: clamp(12px, 3vw, 20px); margin-top: 20px; }
-.stat-box { background: rgba(255,255,255,0.03); padding: 20px; border-radius: 16px; text-align: center; }
-.stat-box .number { font-size: clamp(24px, 5vw, 36px); font-weight: 800; color: var(--red); }
-.stat-box .label { font-size: 12px; color: var(--text-dim); margin-top: 4px; }
+.guide-section { background: var(--surface); padding: clamp(20px, 4vw, 30px); border-radius: 24px; border: 1px solid var(--border); margin-bottom: 24px; }
+.guide-section h3 { color: var(--red); font-size: clamp(18px, 3.5vw, 22px); margin-bottom: 15px; display: flex; align-items: center; gap: 10px; }
+.guide-section p { color: var(--text-dim); line-height: 1.7; font-size: clamp(14px, 2.5vw, 16px); }
+.guide-section ul { margin-top: 15px; color: var(--text-dim); font-size: clamp(14px, 2.5vw, 15px); }
+.guide-section li { margin-bottom: 10px; padding-left: 20px; position: relative; }
+.guide-section li::before { content: '\2192'; position: absolute; left: 0; color: var(--red); }
 
 .footer { background: var(--surface); border-top: 1px solid var(--border); padding: clamp(32px, 6vw, 60px) clamp(16px, 4vw, 24px) clamp(20px, 4vw, 30px); margin-top: auto; }
 .footer-grid { max-width: 1200px; margin: 0 auto; display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: clamp(20px, 4vw, 40px); }
@@ -71,7 +70,7 @@ body {
 <nav class="nav-system">
   <div class="nav-top">
     <div class="brand-tag">Match Day v2.0</div>
-    <div class="nav-ticker"><div class="ticker-content">COMMUNITY: Connecting Nepal's football fans worldwide...</div></div>
+    <div class="nav-ticker"><div class="ticker-content">GUIDELINES: High-quality content is the key to community growth...</div></div>
     <div class="nav-auth">PRO ACCOUNT</div>
   </div>
   <div class="nav-main">
@@ -82,8 +81,8 @@ body {
     <div class="nav-links">
       <a href="/" class="nav-link">The Arena</a>
       <a href="/vault" class="nav-link">The Vault</a>
-      <a href="/community" class="nav-link active">Community</a>
-      <a href="/guidelines" class="nav-link">Guidelines</a>
+      <a href="/community" class="nav-link">Community</a>
+      <a href="/guidelines" class="nav-link active">Guidelines</a>
       <a href="/" class="nav-cta">Post</a>
     </div>
   </div>
@@ -91,36 +90,24 @@ body {
 
 <div class="content">
   <div class="page-header">
-    <h2>Community</h2>
-    <p>Join Nepal's fastest growing football community.</p>
+    <h2>Guidelines</h2>
+    <p>How to create the perfect match day post.</p>
   </div>
-
-  <div class="community-card">
-    <h3>About Us</h3>
-    <p>Match Day is dedicated to bringing real-time football coverage to Nepal's passionate fanbase. From live match updates to post-match analysis, we bridge the gap between the pitch and the people.</p>
+  <div class="guide-section">
+    <h3>1. Choose Your Event</h3>
+    <p>Every event has a specific visual language. Goals are high-energy, Cards are dramatic, and Full-Time results are celebratory.</p>
   </div>
-
-  <div class="community-card">
-    <h3>Community Stats</h3>
-    <div class="community-stats">
-      <div class="stat-box">
-        <div class="number">1K+</div>
-        <div class="label">Facebook Fans</div>
-      </div>
-      <div class="stat-box">
-        <div class="number">100+</div>
-        <div class="label">Matches Covered</div>
-      </div>
-      <div class="stat-box">
-        <div class="number">24/7</div>
-        <div class="label">Live Coverage</div>
-      </div>
-    </div>
+  <div class="guide-section">
+    <h3>2. The Hero Asset</h3>
+    <p>A high-resolution transparent PNG of the player is recommended. If unavailable, our system generates a premium brand silhouette.</p>
   </div>
-
-  <div class="community-card">
-    <h3>Stay Connected</h3>
-    <p>Follow us on Facebook for live match updates, goal alerts, and post-match analysis. Together we celebrate the beautiful game.</p>
+  <div class="guide-section">
+    <h3>3. Flag Accuracy</h3>
+    <p>Always use the correct ISO 2-letter country code (e.g., 'np' for Nepal) to ensure the correct waving flag is generated.</p>
+  </div>
+  <div class="guide-section">
+    <h3>4. Community Spirit</h3>
+    <p>Keep captions respectful and exciting. We are here to celebrate the beautiful game!</p>
   </div>
 </div>
 

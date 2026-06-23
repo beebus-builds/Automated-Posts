@@ -314,9 +314,10 @@ def get_latest_event():
 def trigger_update():
     try:
         from src.scheduler import automation_job
-        # Run the automation job once manually
-        automation_job()
-        return jsonify({"success": True, "message": "Live update check triggered successfully!"})
+        posted_count = automation_job()
+        if posted_count > 0:
+            return jsonify({"success": True, "posted_count": posted_count, "message": f"Posted {posted_count} event(s) to Facebook!"})
+        return jsonify({"success": True, "posted_count": 0, "message": "No new events found."})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 

@@ -123,11 +123,15 @@ def automation_job():
     
     if not events:
         logger.info("No new high-value events found.")
-        return
+        return 0
 
     # la-cerne fast-processing: Process multiple goals in parallel
     with ThreadPoolExecutor(max_workers=5) as executor:
-        executor.map(process_event, events)
+        results = list(executor.map(process_event, events))
+    
+    posted = sum(1 for r in results if r)
+    logger.info(f"Automation cycle complete. Posted {posted} event(s).")
+    return posted
 
 def sync_history_job():
     """Fetch the last 10 games and post them to FB in parallel."""
