@@ -232,6 +232,15 @@ def parse_text():
 @app.route("/")
 def index(): return render_template("dashboard.html")
 
+@app.route("/vault")
+def vault(): return render_template("vault.html")
+
+@app.route("/community")
+def community(): return render_template("community.html")
+
+@app.route("/guidelines")
+def guidelines(): return render_template("guidelines.html")
+
 def make_caption(event, data):
     home = data.get("home", "Team 1")
     away = data.get("away", "Team 2")
