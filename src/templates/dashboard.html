@@ -3,412 +3,78 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Match Day | Production Dashboard</title>
+<title>Match Day | Control Center</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
 <style>
 *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
-
 :root {
-  --navy: #1a2332;
-  --navy-dark: #0d1419;
-  --red: #dc143c;
-  --gold: #fbbf24;
-  --cream: #f5f5dc;
-  --surface: #131d2b;
-  --surface-2: #1a2a3f;
-  --text: #f1f5f9;
-  --text-dim: #94a3b8;
-  --border: rgba(255,255,255,.08);
-  --glow: rgba(220,20,60,.25);
-  --radius: 16px;
-  --radius-sm: 10px;
-  --font: 'Inter', system-ui, -apple-system, sans-serif;
-  --font-serif: 'Playfair Display', serif;
+  --navy: #1a2332; --navy-dark: #0d1419; --red: #dc143c; --gold: #fbbf24;
+  --surface: #131d2b; --text: #f1f5f9; --text-dim: #94a3b8; --border: rgba(255,255,255,.08);
+  --glow: rgba(220,20,60,.25); --font: 'Inter', sans-serif;
 }
-
-html { font-size: 16px; scroll-behavior: smooth; }
 body {
-  font-family: var(--font);
-  background: var(--navy-dark);
-  color: var(--text);
-  min-height: 100vh;
-  background-image: 
-    radial-gradient(ellipse 80% 50% at 50% -10%, rgba(220,20,60,.08), transparent),
-    radial-gradient(ellipse 60% 40% at 80% 90%, rgba(251,191,36,.04), transparent);
+  font-family: var(--font); background: var(--navy-dark); color: var(--text);
+  min-height: 100vh; display: flex; flex-direction: column;
+  background-image: radial-gradient(circle at center, rgba(220,20,60,.05), transparent);
 }
-
-/* ===== UNIQUE NAVBAR ===== */
-.nav-system {
-  position: sticky;
-  top: 0;
-  z-index: 1000;
-  width: 100%;
-}
-
-/* Tier 1: Brand & Ticker */
-.nav-top {
-  background: var(--navy-dark);
-  height: 40px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0 24px;
-  border-bottom: 1px solid var(--border);
-  font-size: 11px;
-  letter-spacing: .05em;
-  text-transform: uppercase;
-  color: var(--text-dim);
-}
-.nav-ticker {
-  flex: 1;
-  margin: 0 40px;
-  overflow: hidden;
-  white-space: nowrap;
-  position: relative;
-  background: rgba(255,255,255,0.03);
-  padding: 4px 12px;
-  border-radius: 20px;
-}
-.ticker-content {
-  display: inline-block;
-  animation: ticker 30s linear infinite;
-}
-@keyframes ticker {
-  0% { transform: translateX(100%); }
-  100% { transform: translateX(-100%); }
-}
-
-/* Tier 2: Main Nav */
-.nav-main {
-  background: rgba(26, 35, 50, 0.8);
-  backdrop-filter: blur(20px);
-  padding: 16px 24px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  border-bottom: 3px solid var(--red);
-  clip-path: polygon(0 0, 100% 0, 100% 90%, 98% 100%, 0 100%);
-}
-.nav-brand {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  text-decoration: none;
-  color: inherit;
-}
-.nav-logo-mark {
-  width: 40px;
-  height: 40px;
-  background: var(--red);
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-weight: 800;
-  color: #fff;
-  box-shadow: 0 0 15px var(--glow);
-}
-.nav-brand h1 {
-  font-size: 22px;
-  font-weight: 800;
-  letter-spacing: -0.02em;
-}
-
-.nav-links {
-  display: flex;
-  gap: 32px;
-  align-items: center;
-}
-.nav-link {
-  color: var(--text-dim);
-  text-decoration: none;
-  font-size: 14px;
-  font-weight: 600;
-  transition: all .3s;
-  position: relative;
-  padding: 4px 0;
-}
+.nav-system { position: sticky; top: 0; z-index: 1000; width: 100%; }
+.nav-top { background: var(--navy-dark); height: 40px; display: flex; align-items: center; justify-content: space-between; padding: 0 24px; border-bottom: 1px solid var(--border); font-size: 11px; color: var(--text-dim); }
+.nav-ticker { flex: 1; margin: 0 40px; overflow: hidden; white-space: nowrap; background: rgba(255,255,255,0.03); padding: 4px 12px; border-radius: 20px; }
+.ticker-content { display: inline-block; animation: ticker 30s linear infinite; }
+@keyframes ticker { 0% { transform: translateX(100%); } 100% { transform: translateX(-100%); } }
+.nav-main { background: rgba(26, 35, 50, 0.8); backdrop-filter: blur(20px); padding: 16px 24px; display: flex; align-items: center; justify-content: space-between; border-bottom: 3px solid var(--red); clip-path: polygon(0 0, 100% 0, 100% 90%, 98% 100%, 0 100%); }
+.nav-brand { display: flex; align-items: center; gap: 12px; text-decoration: none; color: inherit; }
+.nav-logo-mark { width: 40px; height: 40px; background: var(--red); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 800; color: #fff; box-shadow: 0 0 15px var(--glow); }
+.nav-brand h1 { font-size: 22px; font-weight: 800; }
+.nav-links { display: flex; gap: 32px; align-items: center; }
+.nav-link { color: var(--text-dim); text-decoration: none; font-size: 14px; font-weight: 600; transition: all .3s; position: relative; }
 .nav-link:hover { color: var(--text); }
-.nav-link::after {
-  content: '';
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  width: 0;
-  height: 2px;
-  background: var(--red);
-  transition: width .3s;
-}
-.nav-link:hover::after { width: 100%; }
-.nav-cta {
-  background: var(--red);
-  color: #fff;
-  padding: 8px 20px;
-  border-radius: 50px;
-  font-size: 13px;
-  font-weight: 800;
-  text-decoration: none;
-  transition: transform .2s;
-}
-.nav-cta:hover { transform: scale(1.05); }
+.nav-link.active { color: var(--text); }
+.nav-link.active::after { content: ''; position: absolute; bottom: 0; left: 0; width: 100%; height: 2px; background: var(--red); }
+.nav-cta { background: var(--red); color: #fff; padding: 8px 20px; border-radius: 50px; font-size: 13px; font-weight: 800; text-decoration: none; }
 
-/* ===== DASHBOARD LAYOUT ===== */
-.app-container {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 0;
-  min-height: calc(100vh - 120px);
+.main-container {
+  flex: 1; display: flex; align-items: center; justify-content: center; padding: 40px 24px;
 }
+.action-card {
+  background: var(--surface); padding: 60px 40px; border-radius: 40px; border: 1px solid var(--border);
+  text-align: center; max-width: 600px; width: 100%; box-shadow: 0 30px 60px rgba(0,0,0,0.5);
+  animation: fadeIn 0.6s ease;
+}
+@keyframes fadeIn { from { opacity:0; transform:translateY(20px); } to { opacity:1; transform:translateY(0); } }
+.action-card h2 { font-family: 'Playfair Display', serif; font-size: 42px; margin-bottom: 16px; }
+.action-card p { color: var(--text-dim); font-size: 18px; margin-bottom: 40px; line-height: 1.6; }
 
-/* FORM PANEL */
-.form-panel {
-  background: var(--surface);
-  padding: 32px 20px;
-  border-bottom: 1px solid var(--border);
+.trigger-btn {
+  width: 100%; max-width: 400px; padding: 24px; border: none; border-radius: 20px; 
+  background: linear-gradient(135deg, var(--red), #ff1744); color: #fff;
+  font-size: 20px; font-weight: 800; cursor: pointer; transition: all .3s;
+  text-transform: uppercase; letter-spacing: .1em; box-shadow: 0 10px 30px var(--glow);
 }
-.form-panel-inner { max-width: 600px; margin: 0 auto; }
-.section-label {
-  font-size: 11px;
-  text-transform: uppercase;
-  letter-spacing: .15em;
-  color: var(--text-dim);
-  margin-bottom: 16px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-.section-label::after {
-  content: '';
-  flex: 1;
-  height: 1px;
-  background: var(--border);
-}
+.trigger-btn:hover { transform: scale(1.02); box-shadow: 0 15px 40px var(--glow); }
+.trigger-btn:disabled { background: var(--border); color: var(--text-dim); cursor: not-allowed; transform: none; box-shadow: none; }
 
-.event-grid {
-  display: grid;
-  grid-template-columns: repeat(5, 1fr);
-  gap: 8px;
-  margin-bottom: 24px;
-}
-.event-btn {
-  padding: 12px 4px;
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--border);
-  background: rgba(255,255,255,.03);
-  color: var(--text-dim);
-  cursor: pointer;
-  font-size: clamp(10px, 2vw, 13px);
-  font-weight: 600;
-  transition: all .25s ease;
-  text-align: center;
-}
-.event-btn.active {
-  border-color: var(--red);
-  color: #fff;
-  background: rgba(220,20,60,.12);
-  box-shadow: 0 0 20px var(--glow);
-}
-.event-btn .icon { display: block; font-size: 18px; margin-bottom: 4px; }
+.status-msg { margin-top: 24px; font-size: 14px; color: var(--text-dim); min-height: 20px; transition: all .3s; }
+.status-msg.success { color: #22c55e; font-weight: 600; }
+.status-msg.error { color: var(--red); font-weight: 600; }
 
-.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
-.form-row.single { grid-template-columns: 1fr; }
-.form-group { margin-bottom: 16px; }
-.form-group label {
-  display: block;
-  font-size: 11px;
-  text-transform: uppercase;
-  color: var(--text-dim);
-  margin-bottom: 6px;
-  font-weight: 600;
-}
-.form-group input {
-  width: 100%;
-  padding: 12px 14px;
-  background: rgba(0,0,0,.4);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  color: var(--text);
-  font-size: 14px;
-  transition: all .2s;
-  outline: none;
-}
-.form-group input:focus { border-color: var(--red); box-shadow: 0 0 0 3px var(--glow); }
-
-.submit-btn {
-  width: 100%;
-  padding: 16px;
-  border: none;
-  border-radius: var(--radius-sm);
-  background: linear-gradient(135deg, var(--red), #ff1744);
-  color: #fff;
-  font-size: 16px;
-  font-weight: 800;
-  cursor: pointer;
-  transition: all .25s;
-  text-transform: uppercase;
-  letter-spacing: .1em;
-}
-.submit-btn:hover { transform: translateY(-2px); box-shadow: 0 10px 30px var(--glow); }
-
-/* PREVIEW PANEL */
-.preview-panel {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 40px 20px;
-  background: radial-gradient(circle at center, rgba(220,20,60,.08), transparent);
-}
-.preview-container {
-  position: relative;
-  width: 100%;
-  max-width: 450px;
-  aspect-ratio: 1/1;
-  border-radius: 24px;
-  overflow: hidden;
-  background: #000;
-  box-shadow: 0 30px 60px rgba(0,0,0,0.8);
-}
-.preview-container img { width: 100%; height: 100%; object-fit: cover; }
-.preview-overlay {
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  padding: 24px 16px 16px;
-  background: linear-gradient(transparent, rgba(0,0,0,.9));
-}
-.preview-caption { font-size: 14px; color: rgba(255,255,255,.8); line-height: 1.6; }
-.preview-empty {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  color: var(--text-dim);
-  gap: 12px;
-}
-
-/* ===== UNIQUE FOOTER ===== */
-.footer {
-  background: var(--surface);
-  border-top: 1px solid var(--border);
-  padding: 60px 24px 30px;
-  margin-top: 40px;
-  position: relative;
-  overflow: hidden;
-}
-.footer::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 4px;
-  background: linear-gradient(90deg, var(--navy), var(--red), var(--gold));
-}
-.footer-grid {
-  max-width: 1200px;
-  margin: 0 auto;
-  display: grid;
-  grid-template-columns: 1.5fr 1fr 1fr 1.2fr;
-  gap: 40px;
-}
-.footer-col h3 {
-  font-family: var(--font-serif);
-  font-size: 20px;
-  margin-bottom: 24px;
-  color: #fff;
-  position: relative;
-  display: inline-block;
-}
-.footer-col h3::after {
-  content: '';
-  position: absolute;
-  bottom: -4px;
-  left: 0;
-  width: 30px;
-  height: 2px;
-  background: var(--red);
-}
-.footer-about p {
-  font-size: 14px;
-  line-height: 1.8;
-  color: var(--text-dim);
-  margin-bottom: 20px;
-}
-.footer-links {
-  list-style: none;
-}
+.footer { background: var(--surface); border-top: 1px solid var(--border); padding: 60px 24px 30px; }
+.footer-grid { max-width: 1200px; margin: 0 auto; display: grid; grid-template-columns: 1.5fr 1fr 1fr 1.2fr; gap: 40px; }
+.footer-col h3 { font-family: 'Playfair Display', serif; font-size: 20px; margin-bottom: 24px; color: #fff; position: relative; display: inline-block; }
+.footer-col h3::after { content: ''; position: absolute; bottom: -4px; left: 0; width: 30px; height: 2px; background: var(--red); }
+.footer-links { list-style: none; }
 .footer-links li { margin-bottom: 12px; }
-.footer-links a {
-  color: var(--text-dim);
-  text-decoration: none;
-  font-size: 14px;
-  transition: all .3s;
-}
+.footer-links a { color: var(--text-dim); text-decoration: none; font-size: 14px; transition: all .3s; }
 .footer-links a:hover { color: var(--red); padding-left: 5px; }
-
-.footer-socials {
-  display: flex;
-  gap: 12px;
-  margin-top: 20px;
-}
-.social-icon {
-  width: 36px;
-  height: 36px;
-  background: rgba(255,255,255,0.05);
-  border: 1px solid var(--border);
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--text);
-  text-decoration: none;
-  transition: all .3s;
-}
-.social-icon:hover {
-  background: var(--red);
-  border-color: var(--red);
-  transform: translateY(-3px);
-}
-
-.footer-bottom {
-  max-width: 1200px;
-  margin: 40px auto 0;
-  padding-top: 24px;
-  border-top: 1px solid var(--border);
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  font-size: 12px;
-  color: var(--text-dim);
-}
-
-/* RESPONSIVE */
-@media (max-width: 1024px) {
-  .footer-grid { grid-template-columns: 1fr 1fr; }
-}
-@media (max-width: 768px) {
-  .nav-links { display: none; }
-  .app-container { grid-template-columns: 1fr; }
-  .footer-grid { grid-template-columns: 1fr; gap: 30px; }
-  .footer-bottom { flex-direction: column; gap: 12px; text-align: center; }
-}
+.footer-bottom { max-width: 1200px; margin: 40px auto 0; padding-top: 24px; border-top: 1px solid var(--border); display: flex; justify-content: space-between; font-size: 12px; color: var(--text-dim); }
 </style>
 </head>
 <body>
-
 <nav class="nav-system">
   <div class="nav-top">
     <div class="brand-tag">Match Day v2.0</div>
-    <div class="nav-ticker">
-      <div class="ticker-content">
-        ⚽ BREAKING: Nepal National Team prepares for World Cup Qualifiers! • 🏆 Match Day Community now supports high-res Playwright Rendering • 🏟️ Next Home Match: Saturday 7 PM • 🌟 New Player Profiles being added daily...
-      </div>
-    </div>
+    <div class="nav-ticker"><div class="ticker-content">⚽ AUTOMATED BROADCAST ACTIVE: Monitoring live games 24/7...</div></div>
     <div class="nav-auth">PRO ACCOUNT</div>
   </div>
   <div class="nav-main">
@@ -417,121 +83,21 @@ body {
       <h1>MATCH DAY</h1>
     </a>
     <div class="nav-links">
-      <a href="#" class="nav-link">The Arena</a>
-      <a href="#" class="nav-link">The Vault</a>
-      <a href="#" class="nav-link">Community</a>
-      <a href="#" class="nav-link">Guidelines</a>
-      <a href="#" class="nav-cta">Launch Post</a>
+      <a href="/" class="nav-link active">The Arena</a>
+      <a href="/vault" class="nav-link">The Vault</a>
+      <a href="/community" class="nav-link">Community</a>
+      <a href="/guidelines" class="nav-link">Guidelines</a>
+      <a href="/" class="nav-cta">Launch Post</a>
     </div>
   </div>
 </nav>
 
-<div class="app-container">
-  <div class="dashboard">
-    <!-- FORM PANEL -->
-    <div class="form-panel" id="formPanel">
-      <div class="form-panel-inner">
-        <form id="postForm">
-          <div class="section-label">Event Type</div>
-          <div class="event-grid" id="eventButtons">
-            <button type="button" class="event-btn active" data-event="goal" onclick="setEvent('goal')">
-              <span class="icon">⚽</span>Goal
-            </button>
-            <button type="button" class="event-btn" data-event="card" onclick="setEvent('card')">
-              <span class="icon">🟨</span>Card
-            </button>
-            <button type="button" class="event-btn" data-event="sub" onclick="setEvent('sub')">
-              <span class="icon">🔄</span>Sub
-            </button>
-            <button type="button" class="event-btn" data-event="halftime" onclick="setEvent('halftime')">
-              <span class="icon">⏸️</span>HT
-            </button>
-            <button type="button" class="event-btn" data-event="fulltime" onclick="setEvent('fulltime')">
-              <span class="icon">🏁</span>FT
-            </button>
-          </div>
-
-          <input type="hidden" name="event" id="eventSelect" value="goal">
-
-          <div class="section-label">Match Details</div>
-
-           <div class="form-row">
-             <div class="form-group">
-               <label>Home</label>
-               <input name="home" placeholder="e.g. Nepal" oninput="refreshPreview()">
-             </div>
-             <div class="form-group">
-               <label>Away</label>
-               <input name="away" placeholder="e.g. India" oninput="refreshPreview()">
-             </div>
-           </div>
-
-           <div class="form-row">
-             <div class="form-group">
-               <label>Home Country Code</label>
-               <input name="home_code" placeholder="e.g. np" oninput="refreshPreview()">
-             </div>
-             <div class="form-group">
-               <label>Away Country Code</label>
-               <input name="away_code" placeholder="e.g. in" oninput="refreshPreview()">
-             </div>
-           </div>
-
-           <div class="form-row">
-             <div class="form-group" style="grid-column: 1;">
-               <label id="player1Label">Scorer</label>
-               <input name="scorer" id="player1Input" placeholder="Player name" oninput="refreshPreview()">
-             </div>
-             <div class="form-group" id="player2Field">
-               <label>Player In</label>
-               <input name="player_on" placeholder="Substitute" oninput="refreshPreview()">
-             </div>
-           </div>
-
-           <div class="form-row single">
-             <div class="form-group">
-               <label>Player Image URL</label>
-               <input name="player_img" placeholder="https://example.com/player.jpg" oninput="refreshPreview()">
-             </div>
-           </div>
-
-
-          <div class="form-row" id="scoreRow" style="display:none;">
-            <div class="form-group">
-              <label>Home Score</label>
-              <input name="sh" id="scoreHome" value="0" placeholder="0" oninput="refreshPreview()">
-            </div>
-            <div class="form-group">
-              <label>Away Score</label>
-              <input name="sa" id="scoreAway" value="0" placeholder="0" oninput="refreshPreview()">
-            </div>
-          </div>
-
-          <div class="form-row single" id="minuteRow">
-            <div class="form-group">
-              <label>Minute</label>
-              <input name="minute" id="minuteField" placeholder="e.g. 23" oninput="refreshPreview()">
-            </div>
-          </div>
-
-          <button type="submit" class="submit-btn">Post to Facebook</button>
-        </form>
-      </div>
-    </div>
-
-    <!-- PREVIEW PANEL -->
-    <div class="preview-panel">
-      <div class="preview-container" id="previewContainer">
-        <img id="previewImage" src="" alt="Preview" style="display:none;">
-        <div class="preview-empty" id="previewEmpty">
-          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/></svg>
-          <span>Fill in the details to see a preview</span>
-        </div>
-        <div class="preview-overlay">
-          <div class="preview-caption" id="previewCaption">Waiting...</div>
-        </div>
-      </div>
-    </div>
+<div class="main-container">
+  <div class="action-card">
+    <h2>Broadcast Center</h2>
+    <p>The bot is automatically monitoring live matches.<br>Want to force an update right now?</p>
+    <button id="triggerBtn" class="trigger-btn" onclick="triggerUpdate()">Post Latest Update</button>
+    <div id="statusMsg" class="status-msg"></div>
   </div>
 </div>
 
@@ -539,38 +105,28 @@ body {
   <div class="footer-grid">
     <div class="footer-col footer-about">
       <h3>MATCH DAY</h3>
-      <p>Dedicated to the heartbeat of Nepal's football. We bridge the gap between the pitch and the community, bringing real-time energy to every goal and every card.</p>
-      <div class="footer-socials">
-        <a href="#" class="social-icon">FB</a>
-        <a href="#" class="social-icon">IG</a>
-        <a href="#" class="social-icon">TW</a>
-      </div>
+      <p>Dedicated to the heartbeat of Nepal's football.</p>
     </div>
     <div class="footer-col">
       <h3>Quick Links</h3>
       <ul class="footer-links">
-        <li><a href="#">Match Calendar</a></li>
-        <li><a href="#">Player Stats</a></li>
-        <li><a href="#">Community Forum</a></li>
-        <li><a href="#">Brand Assets</a></li>
+        <li><a href="/">The Arena</a></li>
+        <li><a href="/vault">The Vault</a></li>
+        <li><a href="/community">Community</a></li>
       </ul>
     </div>
     <div class="footer-col">
-      <h3>The Network</h3>
+      <h3>Network</h3>
       <ul class="footer-links">
-        <li><a href="#">Partner Leagues</a></li>
         <li><a href="#">Sponsors</a></li>
         <li><a href="#">Press Kit</a></li>
-        <li><a href="#">Careers</a></li>
       </ul>
     </div>
     <div class="footer-col">
       <h3>Legal</h3>
       <ul class="footer-links">
-        <li><a href="#">Terms of Service</a></li>
         <li><a href="#">Privacy Policy</a></li>
-        <li><a href="#">Cookie Settings</a></li>
-        <li><a href="#">Ethics Code</a></li>
+        <li><a href="#">Terms</a></li>
       </ul>
     </div>
   </div>
@@ -581,84 +137,33 @@ body {
 </footer>
 
 <script>
-function setEvent(e) {
-  document.getElementById('eventSelect').value = e;
-  document.querySelectorAll('.event-btn').forEach(b => b.classList.toggle('active', b.dataset.event === e));
-  const p1label = document.getElementById('player1Label');
-  const p2field = document.getElementById('player2Field');
-  const scoreRow = document.getElementById('scoreRow');
-  const minuteRow = document.getElementById('minuteRow');
-  const isScoreEvent = e === 'halftime' || e === 'fulltime';
-  scoreRow.style.display = isScoreEvent ? 'grid' : 'none';
-  minuteRow.style.display = isScoreEvent ? 'none' : 'block';
-  const p1 = document.getElementById('player1Input');
-  if (e === 'goal') {
-    p1label.textContent = 'Scorer'; p2field.style.display = 'none'; p1.name = 'scorer';
-  } else if (e === 'card') {
-    p1label.textContent = 'Player'; p2field.style.display = 'none'; p1.name = 'player';
-  } else if (e === 'sub') {
-    p1label.textContent = 'Player Off'; p2field.style.display = 'block'; p1.name = 'player_off';
-  } else {
-    p1label.textContent = 'Home Scorer'; p2field.style.display = 'none'; p1.name = 'scorer';
-  }
-  refreshPreview();
-}
-
-let timer;
-function refreshPreview() { clearTimeout(timer); timer = setTimeout(doRefresh, 300); }
-
-async function doRefresh() {
-  var img = document.getElementById('previewImage');
-  var empty = document.getElementById('previewEmpty');
-  var caption = document.getElementById('previewCaption');
-  try {
-    var form = document.getElementById('postForm');
-    var fd = new FormData(form);
-    var data = {};
-    fd.forEach(function(v, k) { data[k] = v; });
-    var res = await fetch('/api/preview', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(data)});
-    var r = await res.json();
-    if (r.preview_url) {
-      img.src = r.preview_url + '?t=' + Date.now();
-      img.style.display = 'block';
-      empty.style.display = 'none';
-      caption.textContent = r.caption;
-    } else if (r.error) {
-      img.style.display = 'none';
-      empty.style.display = 'flex';
-      caption.textContent = 'Error: ' + r.error;
-    }
-  } catch(err) {
-    img.style.display = 'none';
-    empty.style.display = 'flex';
-    caption.textContent = 'Request failed: ' + err.message;
-  }
-}
-
-document.getElementById('postForm').addEventListener('submit', async function(e) {
-  e.preventDefault();
-  var btn = e.target.querySelector('.submit-btn');
-  btn.textContent = 'Posting...';
+async function triggerUpdate() {
+  const btn = document.getElementById('triggerBtn');
+  const msg = document.getElementById('statusMsg');
+  
   btn.disabled = true;
+  btn.textContent = 'Checking for updates...';
+  msg.textContent = 'Scanning live matches...';
+  msg.className = 'status-msg';
+  
   try {
-    var fd = new FormData(e.target);
-    var data = {};
-    fd.forEach(function(v, k) { data[k] = v; });
-    var res = await fetch('/api/post', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(data)});
-    var r = await res.json();
-    if (r.success) {
-      alert('Successfully posted to Facebook!');
+    const res = await fetch('/api/trigger-update', { method: 'POST' });
+    const data = await res.json();
+    if (data.success) {
+      msg.textContent = 'Success! Check your Facebook page for new updates.';
+      msg.className = 'status-msg success';
     } else {
-      alert('Error: ' + (r.error || 'Unknown'));
+      msg.textContent = 'Error: ' + data.error;
+      msg.className = 'status-msg error';
     }
   } catch (err) {
-    alert('Network error: ' + err.message);
+    msg.textContent = 'Network error. Please try again.';
+    msg.className = 'status-msg error';
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Post Latest Update';
   }
-  btn.textContent = 'Post to Facebook';
-  btn.disabled = false;
-});
-
-setTimeout(refreshPreview, 500);
+}
 </script>
 </body>
 </html>

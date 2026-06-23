@@ -295,6 +295,31 @@ _ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 PREVIEW_DIR = os.path.join(_ROOT, "previews")
 os.makedirs(PREVIEW_DIR, exist_ok=True)
 
+@app.route("/api/latest-event")
+def get_latest_event():
+    try:
+        from src.scheduler import SportsAPIProvider
+        provider = SportsAPIProvider()
+        events = provider.get_latest_events()
+        if not events:
+            return jsonify({"error": "No live events found right now"}), 404
+        
+        # Return the most recent/first event
+        event = events[0]
+        return jsonify(event)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/api/trigger-update", methods=["POST"])
+def trigger_update():
+    try:
+        from src.scheduler import automation_job
+        # Run the automation job once manually
+        automation_job()
+        return jsonify({"success": True, "message": "Live update check triggered successfully!"})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
 @app.route("/api/preview", methods=["POST"])
 def preview():
     data = request.get_json()
