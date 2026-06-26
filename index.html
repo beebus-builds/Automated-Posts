@@ -88,6 +88,7 @@ body { font-family: 'Inter', system-ui, -apple-system, sans-serif; background: v
   <div class="tabs">
     <button class="tab active" onclick="switchTab('matches')">Matches</button>
     <button class="tab" onclick="switchTab('standings')">Standings</button>
+    <button class="tab" onclick="switchTab('team')">Team</button>
     <button class="tab" onclick="switchTab('history')">History</button>
   </div>
   <div class="panel active" id="tab-matches">
@@ -105,6 +106,9 @@ body { font-family: 'Inter', system-ui, -apple-system, sans-serif; background: v
   </div>
   <div class="panel" id="tab-standings">
     <div class="card" id="standingsList"><div class="skeleton"></div></div>
+  </div>
+  <div class="panel" id="tab-team">
+    <div class="card" id="teamDetails">Select a team from matches to view details...</div>
   </div>
   <div class="toast" id="toast">Updated!</div>
   <div class="panel" id="tab-history">
@@ -133,6 +137,30 @@ function switchTab(name) {
   document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
   document.querySelector(`.tabs .tab[onclick*="${name}"]`).classList.add('active');
   document.getElementById(`tab-${name}`).classList.add('active');
+}
+
+async function showTeam(id) {
+    switchTab('team');
+    const el = document.getElementById('teamDetails');
+    el.innerHTML = '<div class="skeleton"></div>';
+    const r = await fetch(`${API}/teams/${id}`);
+    const team = await r.json();
+    if(team.error) { el.innerHTML = '<div class="empty-state">Team not found</div>'; return; }
+    el.innerHTML = `
+        <div style="text-align:center">
+            <img src="${team.crest}" style="width:80px">
+            <h2>${team.name}</h2>
+            <p>${team.venue || ''}</p>
+        </div>
+        <div class="summary-detail">
+            <div class="row"><span class="label">Coach</span><span class="value">${team.coach?.name || 'N/A'}</span></div>
+            <div class="row"><span class="label">Founded</span><span class="value">${team.founded || 'N/A'}</span></div>
+        </div>
+        <h4>Squad</h4>
+        <div class="table">
+            ${team.squad.map(p => `<div>${p.name} - ${p.position}</div>`).join('')}
+        </div>
+    `;
 }
 
 function switchSubTab(name, btn) {
@@ -166,9 +194,9 @@ function loadCurrentTab() {
           <div class="match-status status-${m.status === 'IN_PLAY' || m.status === 'PAUSED' ? 'LIVE' : m.status}">${m.status === 'IN_PLAY' ? 'LIVE' : m.status}</div>
           <div class="match-meta"><span class="badge">${m.competition || ''}</span></div>
         </div>
-        <div class="team-block">${m.home_crest ? '<img src="'+m.home_crest+'">' : '<span class="crest-placeholder"></span>'}<span>${m.home_team}</span></div>
+        <div class="team-block" onclick="event.stopPropagation(); showTeam(${m.home_id})">${m.home_crest ? '<img src="'+m.home_crest+'">' : '<span class="crest-placeholder"></span>'}<span>${m.home_team}</span></div>
         <div class="score-block">${m.home_score ?? '-'}-${m.away_score ?? '-'}</div>
-        <div class="team-block">${m.away_crest ? '<img src="'+m.away_crest+'">' : '<span class="crest-placeholder"></span>'}<span>${m.away_team}</span></div>
+        <div class="team-block" onclick="event.stopPropagation(); showTeam(${m.away_id})">${m.away_crest ? '<img src="'+m.away_crest+'">' : '<span class="crest-placeholder"></span>'}<span>${m.away_team}</span></div>
       </div>
       <div class="timeline" id="tl-${m.id}">...expanded content...</div>`).join('');
       showToast('Loaded');

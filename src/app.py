@@ -180,8 +180,17 @@ def history():
 
 @app.route("/api/standings")
 def api_standings():
-    # Fetch World Cup standings (WC)
-    return jsonify(get_standings("WC"))
+    comp = request.args.get("comp", "WC")
+    return jsonify(get_standings(comp))
+
+
+@app.route("/api/teams/<int:team_id>")
+def api_team(team_id):
+    from football_api import get_team_details
+    team = get_team_details(team_id)
+    if team:
+        return jsonify(team)
+    return jsonify({"error": "Team not found"}), 404
 
 
 

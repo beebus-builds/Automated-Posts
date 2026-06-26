@@ -72,6 +72,11 @@ def get_standings(competition_code="WC"):
     return data.get("standings", [])
 
 
+def get_team_details(team_id):
+    """Get team details by ID."""
+    return _get(f"/teams/{team_id}", ttl=60)
+
+
 def match_to_summary(m):
     """Convert raw API match to a clean summary dict."""
     sc = m.get("score", {})
