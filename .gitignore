@@ -18,4 +18,5 @@ Thumbs.db
 instance/
 *.db
 history.json
+match_state.json
 tmp/
