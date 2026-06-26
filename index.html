@@ -15,8 +15,8 @@ body { font-family: 'Inter', system-ui, -apple-system, sans-serif; background: v
 .header h1 span { color: var(--accent); }
 .comp-select { padding: 8px; border-radius: 10px; background: var(--surface); color: white; border: 1px solid var(--glass-border); }
 .card { background: var(--glass); backdrop-filter: blur(12px); border: 1px solid var(--glass-border); border-radius: 20px; padding: 20px; margin-bottom: 20px; }
-.tabs { display: flex; gap: 10px; margin-bottom: 20px; }
-.tab { flex: 1; padding: 12px; border: none; background: var(--glass); color: #888; font-weight: 600; cursor: pointer; border-radius: 12px; transition: 0.3s; font-size: 14px; }
+.tabs { display: flex; gap: 5px; margin-bottom: 20px; overflow-x: auto; }
+.tab { flex: 1; padding: 10px; border: none; background: var(--glass); color: #888; font-weight: 600; cursor: pointer; border-radius: 12px; transition: 0.3s; font-size: 13px; white-space: nowrap;}
 .tab:hover { background: rgba(255,255,255,0.08); }
 .tab.active { background: var(--accent); color: white; }
 .panel { display: none; }
@@ -63,6 +63,11 @@ body { font-family: 'Inter', system-ui, -apple-system, sans-serif; background: v
 .table th { color: #666; font-weight: 500; text-align: left; padding: 10px; }
 .table td { padding: 10px; border-top: 1px solid var(--glass-border); }
 .table img { width: 20px; vertical-align: middle; margin-right: 8px; }
+.form-box { display: flex; gap: 4px; margin-top: 8px; }
+.form-cell { width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 700; border-radius: 4px; color: white; }
+.form-W { background: #22c55e; }
+.form-D { background: #666; }
+.form-L { background: #e63946; }
 .history-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; }
 .hist-item { background: var(--glass); border-radius: 12px; overflow: hidden; }
 .hist-item img { width: 100%; aspect-ratio: 1; object-fit: cover; }
@@ -89,6 +94,7 @@ body { font-family: 'Inter', system-ui, -apple-system, sans-serif; background: v
     <button class="tab active" onclick="switchTab('matches')">Matches</button>
     <button class="tab" onclick="switchTab('standings')">Standings</button>
     <button class="tab" onclick="switchTab('team')">Team</button>
+    <button class="tab" onclick="switchTab('news')">News</button>
     <button class="tab" onclick="switchTab('history')">History</button>
   </div>
   <div class="panel active" id="tab-matches">
@@ -110,6 +116,9 @@ body { font-family: 'Inter', system-ui, -apple-system, sans-serif; background: v
   <div class="panel" id="tab-team">
     <div class="card" id="teamDetails">Select a team from matches to view details...</div>
   </div>
+  <div class="panel" id="tab-news">
+    <div class="card" id="newsList"><div class="skeleton"></div></div>
+  </div>
   <div class="toast" id="toast">Updated!</div>
   <div class="panel" id="tab-history">
     <div class="card" id="historyList"></div>
@@ -126,6 +135,7 @@ async function init() {
     sel.innerHTML = Object.entries(comps).map(([name, code]) => `<option value="${code}">${name}</option>`).join('');
     loadCurrentTab();
     loadStandings();
+    loadNews();
     loadHistory();
 }
 
@@ -146,6 +156,10 @@ async function showTeam(id) {
     const r = await fetch(`${API}/teams/${id}`);
     const team = await r.json();
     if(team.error) { el.innerHTML = '<div class="empty-state">Team not found</div>'; return; }
+    
+    // Simple form visualization from recent matches
+    const form = team.recentMatches?.slice(-5).map(m => m.result).join('') || '';
+    
     el.innerHTML = `
         <div style="text-align:center">
             <img src="${team.crest}" style="width:80px">
@@ -154,13 +168,28 @@ async function showTeam(id) {
         </div>
         <div class="summary-detail">
             <div class="row"><span class="label">Coach</span><span class="value">${team.coach?.name || 'N/A'}</span></div>
-            <div class="row"><span class="label">Founded</span><span class="value">${team.founded || 'N/A'}</span></div>
+            <div class="row"><span class="label">Form</span><div class="form-box">${form.split('').map(c => `<div class="form-cell form-${c}">${c}</div>`).join('')}</div></div>
         </div>
         <h4>Squad</h4>
         <div class="table">
             ${team.squad.map(p => `<div>${p.name} - ${p.position}</div>`).join('')}
         </div>
     `;
+}
+
+async function loadNews() {
+    const el = document.getElementById('newsList');
+    el.innerHTML = '<div class="skeleton"></div>';
+    try {
+        const r = await fetch(API + '/news');
+        const news = await r.json();
+        el.innerHTML = news.map(n => `
+            <div class="match-item" style="display:block" onclick="window.open('${n.link}')">
+                <div style="font-weight:600; margin-bottom:5px">${n.title}</div>
+                <div style="font-size:12px; color:#888">${n.summary.replace(/<[^>]*>?/gm, '')}</div>
+            </div>
+        `).join('');
+    } catch { el.innerHTML = '<div class="empty-state">Could not load news</div>'; }
 }
 
 function switchSubTab(name, btn) {
@@ -209,7 +238,6 @@ async function loadStandings() {
     const r = await fetch(API + '/standings?comp=' + getComp());
     const data = await r.json();
     if (!data.length) { el.innerHTML = '<div class="empty-state">No standings available</div>'; return; }
-    // Assuming table structure
     const table = data[0].table;
     el.innerHTML = `<table class="table"><tr><th>Team</th><th>MP</th><th>Pts</th></tr>` +
         table.map(t => `<tr><td><img src="${t.team.crest}">${t.team.name}</td><td>${t.playedGames}</td><td>${t.points}</td></tr>`).join('') +

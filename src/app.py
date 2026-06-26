@@ -178,10 +178,14 @@ def history():
     return jsonify(load_history())
 
 
-@app.route("/api/standings")
-def api_standings():
-    comp = request.args.get("comp", "WC")
-    return jsonify(get_standings(comp))
+# For News
+import feedparser
+
+@app.route("/api/news")
+def api_news():
+    # Using a generic BBC Football feed as a placeholder
+    feed = feedparser.parse("https://feeds.bbci.co.uk/sport/football/rss.xml")
+    return jsonify([{"title": e.title, "link": e.link, "summary": e.summary} for e in feed.entries[:10]])
 
 
 @app.route("/api/teams/<int:team_id>")
