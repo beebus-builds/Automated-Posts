@@ -6,43 +6,33 @@
 <title>Match Day Poster</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚽</text></svg>">
 <style>
-:root {
-  --accent: #e63946;
-  --bg-dark: #07080f;
-  --glass: rgba(255, 255, 255, 0.05);
-  --glass-border: rgba(255, 255, 255, 0.1);
-}
+:root { --accent: #e63946; --bg-dark: #07080f; --glass: rgba(255, 255, 255, 0.05); --glass-border: rgba(255, 255, 255, 0.1); }
 * { margin: 0; padding: 0; box-sizing: border-box; }
 body { font-family: 'Inter', system-ui, -apple-system, sans-serif; background: var(--bg-dark); color: #eee; min-height: 100vh; }
 .app { max-width: 600px; margin: 0 auto; padding: 20px; }
-
-/* Glassmorphism Cards */
-.card, .glass-card {
-  background: var(--glass);
-  backdrop-filter: blur(12px);
-  border: 1px solid var(--glass-border);
-  border-radius: 20px;
-  padding: 20px;
-  margin-bottom: 20px;
-}
-
-/* Tabs */
+.card { background: var(--glass); backdrop-filter: blur(12px); border: 1px solid var(--glass-border); border-radius: 20px; padding: 20px; margin-bottom: 20px; }
 .tabs { display: flex; gap: 10px; margin-bottom: 20px; }
 .tab { flex: 1; padding: 12px; border: none; background: var(--glass); color: #888; font-weight: 600; cursor: pointer; border-radius: 12px; transition: 0.3s; }
 .tab.active { background: var(--accent); color: white; }
 .panel { display: none; }
 .panel.active { display: block; }
-
-/* History Grid */
 .history-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; }
 .hist-item { background: var(--glass); border-radius: 12px; overflow: hidden; }
 .hist-item img { width: 100%; aspect-ratio: 1; object-fit: cover; }
 .hist-info { padding: 10px; font-size: 11px; color: #aaa; }
-
-/* Matches */
-.match-item { display: flex; align-items: center; justify-content: space-between; padding: 15px; background: var(--glass); border-radius: 15px; margin-bottom: 10px; }
-.score { font-size: 20px; font-weight: 800; color: white; }
+.match-item { display: flex; align-items: center; justify-content: space-between; padding: 15px; background: var(--glass); border-radius: 15px; margin-bottom: 10px; cursor: pointer; transition: 0.2s; }
+.match-item:hover { background: rgba(255,255,255,0.08); }
+.score-block { font-size: 20px; font-weight: 800; color: white; min-width: 60px; text-align: center; }
+.status-LIVE { 
+    background: transparent; color: #22c55e; border: 1px solid #22c55e;
+    box-shadow: 0 0 8px #22c55e; animation: pulse 1.5s infinite; 
+}
+.match-meta { font-size: 11px; color: #666; margin-top: 4px; display: flex; gap: 10px; }
+.empty-state { text-align: center; padding: 40px; color: #555; }
+.empty-state .icon { font-size: 48px; margin-bottom: 10px; }
+.match-item:active { transform: scale(0.98); }
 </style>
+
 </head>
 <body>
 <div class="app">
@@ -52,8 +42,16 @@ body { font-family: 'Inter', system-ui, -apple-system, sans-serif; background: v
     <button class="tab" onclick="switchTab('history')">History</button>
   </div>
   <div class="panel active" id="tab-matches">
-    <div id="matchesList">Loading...</div>
+    <div class="controls">
+        <input type="text" class="search-bar" id="search" placeholder="🔍 Search teams..." onkeyup="loadMatches()">
+        <button class="refresh-btn" onclick="loadMatches()">🔄 Refresh Matches</button>
+        <span id="lastUpdated"></span>
+    </div>
+    <div id="matchesList">
+      <div class="skeleton"></div><div class="skeleton"></div>
+    </div>
   </div>
+  <div class="toast" id="toast">Data Updated!</div>
   <div class="panel" id="tab-history">
     <div class="card" id="historyList"></div>
   </div>
@@ -67,40 +65,57 @@ function switchTab(name) {
   document.getElementById(`tab-${name}`).classList.add('active');
 }
 async function loadMatches() {
-  const r = await fetch(API + '/matches');
-  const matches = await r.json();
   const el = document.getElementById('matchesList');
-  el.innerHTML = matches.map(m => `
-    <div class="match-item">
-      <div class="match-status status-${m.status}">${m.status}</div>
-      <div class="team-block"><img class="crest" src="${m.home_crest}"><div>${m.home_team}</div></div>
-      <div class="score-block">${m.home_score ?? '-'}-${m.away_score ?? '-'}</div>
-      <div class="team-block"><img class="crest" src="${m.away_crest}"><div>${m.away_team}</div></div>
-    </div>
-  `).join('');
+  const filter = document.getElementById('search').value.toLowerCase();
+  try {
+    const r = await fetch(API + '/matches');
+    let matches = await r.json();
+    matches = matches.filter(m => m.home_team.toLowerCase().includes(filter) || m.away_team.toLowerCase().includes(filter));
+    const order = { 'LIVE': 0, 'IN_PLAY': 0, 'FINISHED': 1, 'SCHEDULED': 2, 'TIMED': 2 };
+    matches.sort((a, b) => (order[a.status] || 9) - (order[b.status] || 9));
+    el.innerHTML = matches.map(m => `
+      <div class="match-item" onclick="expandMatch(${m.id})">
+        <div>
+          <div class="match-status">${m.status}</div>
+          <div class="match-meta">${m.competition || ''} ${m.venue ? '• '+m.venue : ''}</div>
+        </div>
+        <div class="team-block"><img src="${m.home_crest}" style="width:24px"><div>${m.home_team}</div></div>
+        <div class="score-block">${m.home_score ?? '-'}-${m.away_score ?? '-'}</div>
+        <div class="team-block"><img src="${m.away_crest}" style="width:24px"><div>${m.away_team}</div></div>
+      </div>
+      <div class="timeline" id="tl-${m.id}">
+        ${(m.events && m.events.length) ? m.events.map(e => `
+          <div class="event-row"><span>${e.type.toUpperCase()} - ${e.player}</span><span>${e.minute}'</span></div>
+        `).join('') : '<div class="empty-state">No events yet</div>'}
+      </div>
+    `).join('');
+    
+    document.getElementById('lastUpdated').textContent = 'Updated: ' + new Date().toLocaleTimeString();
+    showToast('Matches Updated!');
+  } catch(e) { el.innerHTML = 'Error loading matches'; }
+}
+
+function showToast(msg) {
+  const toast = document.getElementById('toast');
+  toast.textContent = msg;
+  toast.classList.add('show');
+  setTimeout(() => toast.classList.remove('show'), 2000);
+}
+
+function expandMatch(id) {
+  const tl = document.getElementById('tl-' + id);
+  tl.classList.toggle('expanded');
 }
 async function loadHistory() {
-  try {
-    const r = await fetch(API + '/history');
-    const data = await r.json();
-    const el = document.getElementById('historyList');
-    if (data.length) {
-      el.innerHTML = '<div class="history-grid">' + data.map(h => `
-        <div class="hist-item">
-          <img src="/tmp/card_latest.png" alt="Card" onerror="this.style.display='none'">
-          <div class="hist-info">${(h.caption||'').slice(0,30)}...</div>
-        </div>
-      `).join('') + '</div>';
-    } else {
-      el.innerHTML = '<div class="empty-msg">No posts yet</div>';
-    }
-  } catch(e) {}
+  const r = await fetch(API + '/history');
+  const data = await r.json();
+  const el = document.getElementById('historyList');
+  el.innerHTML = data.length ? '<div class="history-grid">' + data.map(h => `
+    <div class="hist-item"><img src="/tmp/card_latest.png"><div class="hist-info">${(h.caption||'').slice(0,30)}...</div></div>
+  `).join('') + '</div>' : '<div class="empty-msg">No posts yet</div>';
 }
-
 init = () => { loadMatches(); loadHistory(); };
 init();
-
-
 </script>
 </body>
 </html>
