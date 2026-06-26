@@ -4,3 +4,5 @@ requests
 python-dotenv
 Pillow
 gunicorn
+gevent
+greenlet
