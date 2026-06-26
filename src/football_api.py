@@ -1,5 +1,6 @@
 """football-data.org API client with caching"""
 import os, time, requests
+from datetime import datetime, timedelta
 from cache import cache
 
 API_KEY = os.environ.get("FOOTBALL_API_KEY", "0d8e8764bcad4be199bd73e88f71d680")
@@ -33,6 +34,39 @@ def get_today_matches():
 def get_match(match_id):
     """Get a specific match by ID."""
     return _get(f"/matches/{match_id}", ttl=10)
+
+
+def get_matches_by_date_range(date_from, date_to, status=None):
+    """Get matches in a date range, optionally filtered by status."""
+    params = f"?dateFrom={date_from}&dateTo={date_to}"
+    if status:
+        params += f"&status={status}"
+    data = _get(f"/matches{params}", ttl=30)
+    if not data:
+        return []
+    return data.get("matches", [])
+
+
+def get_upcoming_matches(days=3):
+    """Get upcoming scheduled matches for next N days."""
+    today = datetime.utcnow().strftime("%Y-%m-%d")
+    future = (datetime.utcnow() + timedelta(days=days)).strftime("%Y-%m-%d")
+    return get_matches_by_date_range(today, future, status="SCHEDULED")
+
+
+def get_past_matches(days=3):
+    """Get recent finished matches from last N days."""
+    today = datetime.utcnow().strftime("%Y-%m-%d")
+    past = (datetime.utcnow() - timedelta(days=days)).strftime("%Y-%m-%d")
+    return get_matches_by_date_range(past, today, status="FINISHED")
+
+
+def get_standings(competition_code="WC"):
+    """Get standings for a competition (e.g. WC, CL, PL)."""
+    data = _get(f"/competitions/{competition_code}/standings", ttl=120)
+    if not data:
+        return []
+    return data.get("standings", [])
 
 
 def match_to_summary(m):

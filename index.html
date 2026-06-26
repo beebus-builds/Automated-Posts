@@ -6,116 +6,221 @@
 <title>Match Day Poster</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚽</text></svg>">
 <style>
-:root { --accent: #e63946; --bg-dark: #07080f; --glass: rgba(255, 255, 255, 0.05); --glass-border: rgba(255, 255, 255, 0.1); }
+:root { --accent: #e63946; --bg-dark: #07080f; --glass: rgba(255, 255, 255, 0.05); --glass-border: rgba(255, 255, 255, 0.1); --surface: #11131f; }
 * { margin: 0; padding: 0; box-sizing: border-box; }
-body { font-family: 'Inter', system-ui, -apple-system, sans-serif; background: var(--bg-dark); color: #eee; min-height: 100vh; }
-.app { max-width: 600px; margin: 0 auto; padding: 20px; }
+body { font-family: 'Inter', system-ui, -apple-system, sans-serif; background: var(--bg-dark); color: #eee; min-height: 100vh; padding-bottom: 40px; }
+.app { max-width: 640px; margin: 0 auto; padding: 20px; }
+.header { margin-bottom: 24px; }
+.header h1 { font-size: 28px; font-weight: 800; letter-spacing: -0.5px; }
+.header h1 span { color: var(--accent); }
+.header .sub { font-size: 13px; color: #666; margin-top: 4px; }
 .card { background: var(--glass); backdrop-filter: blur(12px); border: 1px solid var(--glass-border); border-radius: 20px; padding: 20px; margin-bottom: 20px; }
 .tabs { display: flex; gap: 10px; margin-bottom: 20px; }
-.tab { flex: 1; padding: 12px; border: none; background: var(--glass); color: #888; font-weight: 600; cursor: pointer; border-radius: 12px; transition: 0.3s; }
+.tab { flex: 1; padding: 12px; border: none; background: var(--glass); color: #888; font-weight: 600; cursor: pointer; border-radius: 12px; transition: 0.3s; font-size: 14px; }
+.tab:hover { background: rgba(255,255,255,0.08); }
 .tab.active { background: var(--accent); color: white; }
 .panel { display: none; }
 .panel.active { display: block; }
+.sub-tabs { display: flex; gap: 8px; margin-bottom: 16px; }
+.sub-tab { flex: 1; padding: 10px; border: none; background: var(--surface); color: #666; font-weight: 500; cursor: pointer; border-radius: 10px; transition: 0.3s; font-size: 13px; }
+.sub-tab:hover { background: rgba(255,255,255,0.06); }
+.sub-tab.active { background: var(--accent); color: white; }
+.controls { display: flex; gap: 10px; align-items: center; margin-bottom: 16px; flex-wrap: wrap; }
+.search-bar { flex: 1; min-width: 180px; padding: 10px 14px; border: 1px solid var(--glass-border); border-radius: 10px; background: var(--surface); color: #eee; font-size: 14px; outline: none; }
+.search-bar:focus { border-color: var(--accent); }
+.refresh-btn { padding: 10px 16px; border: none; background: var(--accent); color: white; border-radius: 10px; cursor: pointer; font-weight: 600; font-size: 13px; }
+.refresh-btn:hover { opacity: 0.9; }
+#lastUpdated { font-size: 11px; color: #555; }
+.match-item { display: flex; align-items: center; justify-content: space-between; padding: 15px; background: var(--glass); border-radius: 15px; margin-bottom: 8px; cursor: pointer; transition: 0.2s; }
+.match-item:hover { background: rgba(255,255,255,0.08); }
+.match-item:active { transform: scale(0.98); }
+.team-block { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 500; flex: 1; }
+.team-block img { width: 22px; height: 22px; object-fit: contain; }
+.team-block:last-child { flex-direction: row-reverse; text-align: right; }
+.score-block { font-size: 20px; font-weight: 800; color: white; min-width: 56px; text-align: center; margin: 0 8px; }
+.score-block .ht-score { font-size: 10px; color: #666; font-weight: 400; display: block; margin-top: -2px; }
+.match-status { font-size: 11px; font-weight: 700; padding: 2px 10px; border-radius: 20px; display: inline-block; margin-bottom: 4px; }
+.status-LIVE, .status-IN_PLAY, .status-PAUSED { background: transparent; color: #22c55e; border: 1px solid #22c55e; box-shadow: 0 0 8px #22c55e; animation: pulse 1.5s infinite; }
+.status-FINISHED { background: rgba(255,255,255,0.08); color: #aaa; }
+.status-SCHEDULED, .status-TIMED { background: rgba(59,130,246,0.15); color: #60a5fa; }
+.match-meta { font-size: 11px; color: #666; margin-top: 2px; display: flex; gap: 8px; flex-wrap: wrap; }
+.match-meta .badge { background: var(--surface); padding: 1px 8px; border-radius: 6px; color: #888; }
+.timeline { max-height: 0; overflow: hidden; transition: max-height 0.4s ease, padding 0.3s ease; padding: 0 4px; margin-top: 0; background: var(--surface); border-radius: 12px; }
+.timeline.expanded { max-height: 800px; padding: 14px; margin-bottom: 12px; }
+.timeline .event-row { display: flex; justify-content: space-between; padding: 6px 0; font-size: 13px; border-bottom: 1px solid rgba(255,255,255,0.04); }
+.timeline .event-row:last-child { border-bottom: none; }
+.timeline .event-type { font-weight: 600; text-transform: uppercase; }
+.timeline .event-goal { color: #22c55e; }
+.timeline .event-kickoff { color: #60a5fa; }
+.timeline .event-full-time { color: #f59e0b; }
+.timeline .event-minute { color: #888; font-family: monospace; }
+.summary-detail { padding: 8px 0; }
+.summary-detail .row { display: flex; justify-content: space-between; padding: 4px 0; font-size: 12px; border-bottom: 1px solid rgba(255,255,255,0.03); }
+.summary-detail .row:last-child { border-bottom: none; }
+.summary-detail .label { color: #666; }
+.summary-detail .value { color: #ccc; font-weight: 500; }
 .history-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; }
 .hist-item { background: var(--glass); border-radius: 12px; overflow: hidden; }
 .hist-item img { width: 100%; aspect-ratio: 1; object-fit: cover; }
 .hist-info { padding: 10px; font-size: 11px; color: #aaa; }
-.match-item { display: flex; align-items: center; justify-content: space-between; padding: 15px; background: var(--glass); border-radius: 15px; margin-bottom: 10px; cursor: pointer; transition: 0.2s; }
-.match-item:hover { background: rgba(255,255,255,0.08); }
-.score-block { font-size: 20px; font-weight: 800; color: white; min-width: 60px; text-align: center; }
-.status-LIVE { 
-    background: transparent; color: #22c55e; border: 1px solid #22c55e;
-    box-shadow: 0 0 8px #22c55e; animation: pulse 1.5s infinite; 
-}
-.match-meta { font-size: 11px; color: #666; margin-top: 4px; display: flex; gap: 10px; }
 .empty-state { text-align: center; padding: 40px; color: #555; }
 .empty-state .icon { font-size: 48px; margin-bottom: 10px; }
-.match-item:active { transform: scale(0.98); }
+.skeleton { height: 60px; background: linear-gradient(90deg, var(--glass) 25%, rgba(255,255,255,0.08) 50%, var(--glass) 75%); background-size: 200% 100%; animation: shimmer 1.5s infinite; border-radius: 15px; margin-bottom: 10px; }
+.toast { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); background: var(--accent); color: white; padding: 12px 24px; border-radius: 30px; font-weight: 600; font-size: 14px; opacity: 0; transition: 0.3s; z-index: 100; pointer-events: none; }
+.toast.show { opacity: 1; bottom: 50px; }
+@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.6; } }
+@keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+.crest-placeholder { width: 22px; height: 22px; border-radius: 50%; background: var(--surface); display: inline-block; }
 </style>
-
 </head>
 <body>
 <div class="app">
-  <div class="header"><h1>Match <span>Day</span></h1></div>
+  <div class="header">
+    <h1>Match <span>Day</span></h1>
+    <div class="sub">World Cup 2026 &bull; Live Updates</div>
+  </div>
   <div class="tabs">
     <button class="tab active" onclick="switchTab('matches')">Matches</button>
     <button class="tab" onclick="switchTab('history')">History</button>
   </div>
   <div class="panel active" id="tab-matches">
+    <div class="sub-tabs">
+      <button class="sub-tab" onclick="switchSubTab('upcoming',this)">Upcoming</button>
+      <button class="sub-tab active" onclick="switchSubTab('live',this)">Live</button>
+      <button class="sub-tab" onclick="switchSubTab('finished',this)">Finished</button>
+    </div>
     <div class="controls">
-        <input type="text" class="search-bar" id="search" placeholder="🔍 Search teams..." onkeyup="loadMatches()">
-        <button class="refresh-btn" onclick="loadMatches()">🔄 Refresh Matches</button>
-        <span id="lastUpdated"></span>
+      <input type="text" class="search-bar" id="search" placeholder="Search teams..." onkeyup="loadCurrentTab()">
+      <button class="refresh-btn" onclick="loadCurrentTab()">Refresh</button>
+      <span id="lastUpdated"></span>
     </div>
     <div id="matchesList">
-      <div class="skeleton"></div><div class="skeleton"></div>
+      <div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div>
     </div>
   </div>
-  <div class="toast" id="toast">Data Updated!</div>
+  <div class="toast" id="toast">Updated!</div>
   <div class="panel" id="tab-history">
     <div class="card" id="historyList"></div>
   </div>
 </div>
 <script>
 const API = location.origin + '/api';
+let currentSubTab = 'live';
+
 function switchTab(name) {
-  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.tabs .tab').forEach(t => t.classList.remove('active'));
   document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
-  document.querySelector(`.tab[onclick*="${name}"]`).classList.add('active');
+  document.querySelector(`.tabs .tab[onclick*="${name}"]`).classList.add('active');
   document.getElementById(`tab-${name}`).classList.add('active');
+  if (name === 'matches') loadCurrentTab();
+  if (name === 'history') loadHistory();
 }
-async function loadMatches() {
+
+function switchSubTab(name, btn) {
+  currentSubTab = name;
+  document.querySelectorAll('.sub-tab').forEach(t => t.classList.remove('active'));
+  btn.classList.add('active');
+  loadCurrentTab();
+}
+
+function getEndpoint() {
+  if (currentSubTab === 'upcoming') return API + '/matches/upcoming';
+  if (currentSubTab === 'finished') return API + '/matches/past';
+  return API + '/matches';
+}
+
+function loadCurrentTab() {
   const el = document.getElementById('matchesList');
   const filter = document.getElementById('search').value.toLowerCase();
-  try {
-    const r = await fetch(API + '/matches');
-    let matches = await r.json();
-    matches = matches.filter(m => m.home_team.toLowerCase().includes(filter) || m.away_team.toLowerCase().includes(filter));
-    const order = { 'LIVE': 0, 'IN_PLAY': 0, 'FINISHED': 1, 'SCHEDULED': 2, 'TIMED': 2 };
-    matches.sort((a, b) => (order[a.status] || 9) - (order[b.status] || 9));
-    el.innerHTML = matches.map(m => `
+  el.innerHTML = '<div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div>';
+  fetch(getEndpoint())
+    .then(r => r.json())
+    .then(matches => {
+      matches = matches.filter(m =>
+        m.home_team.toLowerCase().includes(filter) ||
+        m.away_team.toLowerCase().includes(filter)
+      );
+      const order = { 'LIVE': 0, 'IN_PLAY': 0, 'PAUSED': 0, 'FINISHED': 1, 'SCHEDULED': 2, 'TIMED': 2 };
+      matches.sort((a, b) => (order[a.status] || 9) - (order[b.status] || 9));
+      if (!matches.length) {
+        el.innerHTML = '<div class="empty-state"><div class="icon">📭</div>No matches in this category</div>';
+        return;
+      }
+      el.innerHTML = matches.map(m => {
+        const statusClass = 'status-' + (m.status === 'IN_PLAY' || m.status === 'PAUSED' ? 'LIVE' : m.status);
+        const sc = m.home_score !== null && m.home_score !== undefined ? `${m.home_score}-${m.away_score}` : 'v';
+        const ht = (m.home_ht !== null && m.home_ht !== undefined) ? `(HT: ${m.home_ht}-${m.away_ht})` : '';
+        return `
       <div class="match-item" onclick="expandMatch(${m.id})">
-        <div>
-          <div class="match-status">${m.status}</div>
-          <div class="match-meta">${m.competition || ''} ${m.venue ? '• '+m.venue : ''}</div>
+        <div style="min-width:80px">
+          <div class="match-status ${statusClass}">${m.status === 'IN_PLAY' ? 'LIVE' : m.status === 'PAUSED' ? 'LIVE' : m.status}</div>
+          <div class="match-meta">
+            <span class="badge">${m.competition || ''}</span>
+            ${m.venue ? '<span class="badge">'+m.venue+'</span>' : ''}
+          </div>
         </div>
-        <div class="team-block"><img src="${m.home_crest}" style="width:24px"><div>${m.home_team}</div></div>
-        <div class="score-block">${m.home_score ?? '-'}-${m.away_score ?? '-'}</div>
-        <div class="team-block"><img src="${m.away_crest}" style="width:24px"><div>${m.away_team}</div></div>
+        <div class="team-block">
+          ${m.home_crest ? '<img src="'+m.home_crest+'" alt="">' : '<span class="crest-placeholder"></span>'}
+          <span>${m.home_team}</span>
+        </div>
+        <div class="score-block">${sc}${ht ? '<span class="ht-score">'+ht+'</span>' : ''}</div>
+        <div class="team-block">
+          ${m.away_crest ? '<img src="'+m.away_crest+'" alt="">' : '<span class="crest-placeholder"></span>'}
+          <span>${m.away_team}</span>
+        </div>
       </div>
       <div class="timeline" id="tl-${m.id}">
-        ${(m.events && m.events.length) ? m.events.map(e => `
-          <div class="event-row"><span>${e.type.toUpperCase()} - ${e.player}</span><span>${e.minute}'</span></div>
-        `).join('') : '<div class="empty-state">No events yet</div>'}
-      </div>
-    `).join('');
-    
-    document.getElementById('lastUpdated').textContent = 'Updated: ' + new Date().toLocaleTimeString();
-    showToast('Matches Updated!');
-  } catch(e) { el.innerHTML = 'Error loading matches'; }
+        ${m.stage || m.group ? '<div class="summary-detail">' +
+          (m.stage ? '<div class="row"><span class="label">Stage</span><span class="value">'+m.stage+'</span></div>' : '') +
+          (m.group ? '<div class="row"><span class="label">Group</span><span class="value">'+m.group+'</span></div>' : '') +
+          (m.venue ? '<div class="row"><span class="label">Venue</span><span class="value">'+m.venue+'</span></div>' : '') +
+          (m.date ? '<div class="row"><span class="label">Date</span><span class="value">'+new Date(m.date).toLocaleString()+'</span></div>' : '') +
+        '</div>' : ''}
+        ${m.events && m.events.length ? '<div style="font-size:12px;color:#888;margin-bottom:6px">EVENT TIMELINE</div>' +
+          m.events.map(e => {
+            const cls = e.type === 'goal' ? 'event-goal' : e.type === 'kickoff' ? 'event-kickoff' : e.type === 'full-time' ? 'event-full-time' : '';
+            return `<div class="event-row"><span class="event-type ${cls}">${e.type}</span><span>${e.player||''}</span><span class="event-minute">${e.minute||''}${e.score ? ' ('+e.score+')' : ''}</span></div>`;
+          }).join('') : '<div style="font-size:12px;color:#555;padding:8px 0">No events recorded yet</div>'}
+      </div>`;
+      }).join('');
+      document.getElementById('lastUpdated').textContent = new Date().toLocaleTimeString();
+      showToast(currentSubTab.charAt(0).toUpperCase()+currentSubTab.slice(1)+' loaded');
+    })
+    .catch(() => { el.innerHTML = '<div class="empty-state"><div class="icon">⚠️</div>Failed to load matches</div>'; });
 }
 
 function showToast(msg) {
-  const toast = document.getElementById('toast');
-  toast.textContent = msg;
-  toast.classList.add('show');
-  setTimeout(() => toast.classList.remove('show'), 2000);
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(t._timer);
+  t._timer = setTimeout(() => t.classList.remove('show'), 2000);
 }
 
 function expandMatch(id) {
   const tl = document.getElementById('tl-' + id);
-  tl.classList.toggle('expanded');
+  if (tl) tl.classList.toggle('expanded');
 }
+
 async function loadHistory() {
-  const r = await fetch(API + '/history');
-  const data = await r.json();
   const el = document.getElementById('historyList');
-  el.innerHTML = data.length ? '<div class="history-grid">' + data.map(h => `
-    <div class="hist-item"><img src="/tmp/card_latest.png"><div class="hist-info">${(h.caption||'').slice(0,30)}...</div></div>
-  `).join('') + '</div>' : '<div class="empty-msg">No posts yet</div>';
+  try {
+    const r = await fetch(API + '/history');
+    const data = await r.json();
+    el.innerHTML = data.length
+      ? '<div class="history-grid">' + data.map(h =>
+          '<div class="hist-item"><img src="'+(h.image_url||'/tmp/card_latest.png')+'"><div class="hist-info">'+(h.caption||'').slice(0,40)+'</div></div>'
+        ).join('') + '</div>'
+      : '<div class="empty-state"><div class="icon">📸</div>No posts yet</div>';
+  } catch {
+    el.innerHTML = '<div class="empty-state"><div class="icon">⚠️</div>Failed to load history</div>';
+  }
 }
-init = () => { loadMatches(); loadHistory(); };
-init();
+
+document.addEventListener('DOMContentLoaded', () => {
+  document.querySelector('.sub-tab.active')?.click();
+  loadHistory();
+});
 </script>
 </body>
 </html>

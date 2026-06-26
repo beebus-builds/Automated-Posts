@@ -29,7 +29,7 @@ if TOKEN and PAGE_ID:
 
 HISTORY_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "history.json")
 
-from football_api import get_today_matches, match_to_summary
+from football_api import get_today_matches, get_upcoming_matches, get_past_matches, match_to_summary, get_standings
 import match_manager
 from pipeline import PipelineThread
 
@@ -91,6 +91,29 @@ def api_matches():
     return jsonify(matches)
 
 
+@app.route("/api/matches/upcoming")
+def api_matches_upcoming():
+    """Return upcoming scheduled matches."""
+    raw = get_upcoming_matches(days=3)
+    return jsonify([match_to_summary(m) for m in raw])
+
+
+@app.route("/api/matches/past")
+def api_matches_past():
+    """Return past finished matches with enriched events."""
+    raw = get_past_matches(days=3)
+    matches = [match_to_summary(m) for m in raw]
+    saved = {m["id"]: m for m in match_manager.get_all_matches()}
+    for m in matches:
+        mid = m["id"]
+        if mid in saved:
+            m["events"] = saved[mid].get("events", [])
+            if saved[mid].get("espn_home_score") is not None:
+                m["home_score"] = saved[mid]["espn_home_score"]
+                m["away_score"] = saved[mid]["espn_away_score"]
+    return jsonify(matches)
+
+
 @app.route("/api/matches/<int:match_id>")
 def api_match(match_id):
     m = match_manager.get_match(match_id)
@@ -137,6 +160,12 @@ def api_events():
 @app.route("/api/history")
 def history():
     return jsonify(load_history())
+
+
+@app.route("/api/standings")
+def api_standings():
+    # Fetch World Cup standings (WC)
+    return jsonify(get_standings("WC"))
 
 
 
