@@ -1,5 +1,5 @@
 import os, json, queue, sys
-from flask import Flask, request, jsonify, Response
+from flask import Flask, request, jsonify, Response, send_file
 from flask_cors import CORS
 from dotenv import load_dotenv
 import requests
@@ -163,7 +163,7 @@ def pipeline_toggle():
 
 @app.route("/")
 def serve_index():
-    return jsonify({"service": "Match Day Poster", "status": "running"})
+    return send_file(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "index.html"))
 
 
 if __name__ == "__main__":
