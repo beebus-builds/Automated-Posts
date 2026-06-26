@@ -1,9 +1,5 @@
-flask
-flask-cors
-gunicorn
+Flask
+Flask-Cors
 requests
 python-dotenv
 Pillow
-beautifulsoup4
-lxml
-eventlet

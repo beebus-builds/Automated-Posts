@@ -5,7 +5,7 @@ from football_api import get_today_matches
 from match_manager import update_match, generate_card_for_event
 
 FB_PIPELINE_ENABLED = os.environ.get("FB_PIPELINE_ENABLED", "0") == "1"
-POLL_INTERVAL = int(os.environ.get("POLL_INTERVAL", "30"))
+POLL_INTERVAL = int(os.environ.get("POLL_INTERVAL", "15"))
 
 
 def check_and_post(token, page_id):

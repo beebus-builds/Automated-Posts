@@ -652,14 +652,11 @@ def _draw_wrapped_center(draw, text, y, max_width, font_size, fill, line_gap, bo
 
 
 def generate_card(description, context=None):
-    """Generate a detailed football media-style event graphic.
-
-    The optional context dict can include:
-    match, event, player_image_url, home_crest, away_crest, home_flag, away_flag.
-    """
+    """Generate a high-quality, editorial-style football graphic."""
     context = context or {}
     match = context.get("match") or {}
     event = context.get("event") or {}
+    image_urls = context.get("player_image_urls") or []
     info = parse_description(description)
 
     output_size = int(os.environ.get("CARD_OUTPUT_SIZE", "1080"))
@@ -676,153 +673,71 @@ def generate_card(description, context=None):
     minute = str(event.get("minute") or info["minute"] or "").replace("'", "")
     score = event.get("score") or info["score"] or ""
     competition = match.get("competition") or ""
-    source = (event.get("source") or "").upper()
-    scoring_team = event.get("team") or ""
-
+    
     colors1 = get_nation_colors(home) or ("#e63946", "#c1121f")
     colors2 = get_nation_colors(away) or ("#1e90ff", "#0a58ca")
-    c1 = hex_to_rgb(colors1[0])
-    c2 = hex_to_rgb(colors2[0])
     ev = EVENT_STYLES.get(event_type, EVENT_STYLES.get("kickoff"))
-    accent = hex_to_rgb(ev["color"]) if ev else (255, 255, 255)
+    accent = hex_to_rgb(ev["color"])
 
-    img = Image.new("RGB", (size, size), (8, 10, 18))
-    layer = Image.new("RGBA", (size, size), (0, 0, 0, 0))
-    ld = ImageDraw.Draw(layer)
-
-    # Editorial split background with pitch-like texture and strong event accent.
-    ld.polygon([(0, 0), (p(690), 0), (p(520), size), (0, size)], fill=(*c1, 115))
-    ld.polygon([(p(520), 0), (size, 0), (size, size), (p(390), size)], fill=(*c2, 100))
-    for i in range(0, 18):
-        x = p(-180 + i * 92)
-        ld.line((x, 0, x + p(520), size), fill=(255, 255, 255, 13), width=p(2))
-    for radius, alpha in [(560, 72), (390, 54), (230, 38)]:
-        ld.ellipse((p(540) - p(radius), p(400) - p(radius), p(540) + p(radius), p(400) + p(radius)),
-                   fill=(*accent, alpha))
-    ld.rectangle((0, 0, size, p(18)), fill=(*accent, 255))
-    ld.rectangle((0, size - p(116), size, size), fill=(4, 6, 14, 245))
-    img = Image.alpha_composite(img.convert("RGBA"), layer).convert("RGB")
+    # 1. Base Layer
+    img = Image.new("RGB", (size, size), (10, 12, 22))
+    
+    # 2. Gradient Background Layer
+    bg_overlay = Image.new("RGBA", (size, size), (0, 0, 0, 0))
+    bg_draw = ImageDraw.Draw(bg_overlay)
+    bg_draw.rectangle((0, 0, size, size), fill=(*hex_to_rgb(colors1[0]), 40))
+    bg_draw.rectangle((size//2, 0, size, size), fill=(*hex_to_rgb(colors2[0]), 40))
+    img = Image.alpha_composite(img.convert("RGBA"), bg_overlay).convert("RGB")
     draw = ImageDraw.Draw(img)
 
-    font_kicker = _font(p(30), bold=True)
-    font_headline = _font(p(108), bold=True)
-    font_player = _font(p(62), bold=True)
-    font_score = _font(p(58), bold=True)
-    font_team = _font(p(28), bold=True)
-    font_meta = _font(p(24), bold=True)
-    font_brand = _font(p(24), bold=True)
+    # 3. Typography Setup
+    font_event = _font(p(42), bold=True)
+    font_headline = _font(p(110), bold=True)
+    font_sub = _font(p(50), bold=True)
+    font_footer = _font(p(24), bold=False)
 
-    label_map = {
-        "goal": "GOAL",
-        "own goal": "OWN GOAL",
-        "penalty": "PENALTY",
-        "red": "RED CARD",
-        "red card": "RED CARD",
-        "yellow": "YELLOW CARD",
-        "yellow card": "YELLOW CARD",
-        "kickoff": "KICK OFF",
-        "half-time": "HALF TIME",
-        "halftime": "HALF TIME",
-        "full-time": "FULL TIME",
-        "fulltime": "FULL TIME",
-        "substitution": "SUBSTITUTION",
-    }
-    label = label_map.get(event_type, "MATCH UPDATE")
+    # 4. Editorial Layout
+    # Event Label Pill
+    label = ev["label"].upper()
+    lw, lh = _text_size(draw, label, font_event)
+    draw.rounded_rectangle((p(60), p(60), p(60)+lw+p(40), p(60)+lh+p(20)), radius=p(10), fill=accent)
+    draw.text((p(80), p(70)), label, font=font_event, fill="white")
 
-    # Left editorial copy block.
-    draw.rounded_rectangle((p(52), p(54), p(310), p(110)), radius=p(12), fill=accent)
-    _center_text(draw, (p(52), p(54), p(310), p(110)), label, font_kicker, "white")
+    # Headline
+    headline = "GOAL!" if event_type in ("goal", "own goal", "penalty") else f"{home} vs {away}".upper()
+    draw.text((p(60), p(150)), headline, font=font_headline, fill="white")
 
-    headline = "GOAL!" if event_type in ("goal", "own goal", "penalty") else label
-    hw, hh = _text_size(draw, headline, font_headline)
-    draw.text((p(54) + p(5), p(138) + p(6)), headline, font=font_headline, fill=(0, 0, 0))
-    draw.text((p(54), p(138)), headline, font=font_headline, fill="white")
+    # Image Area (Bottom half)
+    img_area = (p(60), p(300), size-p(60), size-p(150))
+    
+    # Render Player Image with Gradient Mask
+    if image_urls:
+        photo = _fetch_image_url(image_urls[0], (p(960), p(600)))
+        if photo:
+            _paste_cover(img, photo, img_area, radius=p(20))
+            # Apply Gradient Mask to bottom of photo
+            gradient = Image.new("L", (img_area[2]-img_area[0], img_area[3]-img_area[1]), 0)
+            gdraw = ImageDraw.Draw(gradient)
+            for y in range(gradient.height):
+                alpha = int(255 * (y / gradient.height) ** 2)
+                gdraw.line((0, y, gradient.width, y), fill=alpha)
+            img.paste((10, 12, 22), img_area, gradient)
+            draw = ImageDraw.Draw(img)
 
+    # Info Block
     if player and player.lower() != "unknown":
-        y = _draw_wrapped_center(draw, player.upper(), p(268), p(480), p(62), "#ffffff", p(10), bold=True, min_size=p(34))
-    elif event_type == "goal":
-        y = _draw_wrapped_center(draw, "SCORER PENDING", p(282), p(480), p(48), "#ffffff", p(10), bold=True, min_size=p(30))
-    else:
-        y = _draw_wrapped_center(draw, f"{home} vs {away}".upper(), p(282), p(480), p(44), "#ffffff", p(10), bold=True, min_size=p(28))
+        draw.text((p(80), size-p(220)), player.upper(), font=font_sub, fill="white")
+    if score:
+        draw.text((p(80), size-p(160)), f"SCORE: {score}", font=font_sub, fill=accent)
 
-    details = []
-    if minute and minute not in ("?", "None"):
-        details.append(f"{minute}'")
-    if competition:
-        details.append(competition.upper())
-    if source:
-        details.append(source)
-    if details:
-        line = "  |  ".join(details)
-        mw, mh = _text_size(draw, line, font_meta)
-        draw.text((p(54), max(y + p(8), p(440))), line, font=font_meta, fill="#d6d9e8")
-
-    # Player/photo panel. Real image when provided, otherwise a polished silhouette.
-    photo_box = (p(590), p(118), p(1010), p(742))
-    photo = _fetch_image_url(context.get("player_image_url") or event.get("player_image_url"), (p(900), p(900)))
-    draw.rounded_rectangle(photo_box, radius=p(34), fill=(12, 16, 32), outline=(255, 255, 255), width=p(3))
-    if photo:
-        _paste_cover(img, photo, photo_box, radius=p(34))
-        draw = ImageDraw.Draw(img)
-        shade = Image.new("RGBA", (size, size), (0, 0, 0, 0))
-        sd = ImageDraw.Draw(shade)
-        sd.rounded_rectangle(photo_box, radius=p(34), fill=(0, 0, 0, 55))
-        img = Image.alpha_composite(img.convert("RGBA"), shade).convert("RGB")
-        draw = ImageDraw.Draw(img)
-    else:
-        px1, py1, px2, py2 = photo_box
-        draw.ellipse((px1 + p(135), py1 + p(80), px2 - p(135), py1 + p(300)), fill=(48, 58, 96))
-        draw.rounded_rectangle((px1 + p(92), py1 + p(285), px2 - p(92), py2 + p(120)), radius=p(150), fill=(42, 50, 84))
-        fallback = (player if player and player.lower() != "unknown" else scoring_team or "LIVE").upper()[:2]
-        _center_text(draw, (px1, py1 + p(210), px2, py1 + p(360)), fallback, font_headline, "#ffffff")
-
-    # Score strip.
-    strip = (p(58), p(758), p(1022), p(914))
-    draw.rounded_rectangle(strip, radius=p(24), fill=(7, 9, 20), outline=(255, 255, 255), width=p(2))
-    home_short = home.upper()
-    away_short = away.upper()
-    home_font = _fit_text(draw, home_short, p(300), p(34), p(20), bold=True)
-    away_font = _fit_text(draw, away_short, p(300), p(34), p(20), bold=True)
-    draw.text((p(112), p(804)), home_short, font=home_font, fill="white")
-    draw.text((p(700), p(804)), away_short, font=away_font, fill="white")
-    score_text = score if score else "VS"
-    sw, sh = _text_size(draw, score_text, font_score)
-    draw.rounded_rectangle((p(448), p(785), p(632), p(886)), radius=p(18), fill=accent)
-    draw.text((p(540) - sw / 2, p(834) - sh / 2), score_text, font=font_score, fill="white")
-
-    # Flags and crest/identity chips.
-    flag_size = (p(88), p(62))
-    for team, x in [(home, p(92)), (away, p(900))]:
-        flag = fetch_flag(get_country_code(team), flag_size)
-        if flag:
-            img.paste(flag, (x, p(662)), _rounded_mask(flag_size, p(8)))
-        else:
-            draw.rounded_rectangle((x, p(662), x + flag_size[0], p(662) + flag_size[1]), radius=p(8), fill=(30, 35, 60))
-            _center_text(draw, (x, p(662), x + flag_size[0], p(662) + flag_size[1]), team[:2].upper(), font_team, "white")
-
-    comp = competition.upper() if competition else "MATCH DAY LIVE"
-    comp_font = _fit_text(draw, comp, p(540), p(28), p(18), bold=True)
-    cw, ch = _text_size(draw, comp, comp_font)
-    draw.text((p(540) - cw / 2, p(946)), comp, font=comp_font, fill="#98a1be")
-
+    # Footer/Brand
     if os.path.exists(LOGO_PATH):
         logo = Image.open(LOGO_PATH).convert("RGBA")
-        logo_size = p(74)
-        logo = logo.resize((logo_size, logo_size), Image.LANCZOS)
-        mask = Image.new("L", (logo_size, logo_size), 0)
-        ImageDraw.Draw(mask).ellipse((0, 0, logo_size, logo_size), fill=255)
-        img_rgba = img.convert("RGBA")
-        img_rgba.paste(logo, (p(58), size - p(94)), mask)
-        img = img_rgba.convert("RGB")
-        draw = ImageDraw.Draw(img)
-
-    brand = "MATCH DAY"
-    bw, bh = _text_size(draw, brand, font_brand)
-    draw.text((p(148), size - p(69)), brand, font=font_brand, fill="#dce2f2")
-
-    footer = "AUTOMATED LIVE FOOTBALL UPDATE"
-    fw, fh = _text_size(draw, footer, font_meta)
-    draw.text((size - p(58) - fw, size - p(68)), footer, font=font_meta, fill="#68728f")
+        ls = p(60)
+        logo = logo.resize((ls, ls), Image.LANCZOS)
+        img.paste(logo, (p(60), size-p(90)), logo)
+    
+    draw.text((p(140), size-p(80)), "MATCH DAY POSTER", font=font_footer, fill="#666")
 
     if render_scale > 1:
         img = img.resize((output_size, output_size), Image.Resampling.LANCZOS)
@@ -831,3 +746,5 @@ def generate_card(description, context=None):
     img.save(buf, format="PNG", optimize=True)
     buf.seek(0)
     return buf, img
+
+

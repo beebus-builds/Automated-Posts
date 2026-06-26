@@ -1,5 +1,5 @@
-import os, json, datetime, queue, sys
-from flask import Flask, request, jsonify, send_file, send_from_directory, Response
+import os, json, queue, sys
+from flask import Flask, request, jsonify, Response
 from flask_cors import CORS
 from dotenv import load_dotenv
 import requests
@@ -7,10 +7,9 @@ import requests
 # Ensure src directory is in sys.path for local imports
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
-
 load_dotenv()
 
-app = Flask(__name__, static_folder=os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "static"), static_url_path="/static")
+app = Flask(__name__)
 CORS(app, resources={r"/api/*": {"origins": "*"}})
 
 TOKEN = os.environ.get("FB_PAGE_ACCESS_TOKEN")
@@ -22,15 +21,14 @@ if TOKEN and PAGE_ID:
         for acc in r.json().get("data", []):
             if acc.get("id") == PAGE_ID:
                 pt = acc.get("access_token")
-                if pt: TOKEN = pt; break
+                if pt:
+                    TOKEN = pt
+                    break
     except:
         pass
 
 HISTORY_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "history.json")
-TEMP_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "tmp")
-os.makedirs(TEMP_DIR, exist_ok=True)
 
-from card_generator import generate_card
 from football_api import get_today_matches, match_to_summary
 from match_manager import get_all_matches, get_match, get_match_timeline, update_match
 from pipeline import PipelineThread
@@ -163,14 +161,9 @@ def pipeline_toggle():
     return jsonify({"running": pipeline.running})
 
 
-@app.route("/tmp/<filename>")
-def serve_temp(filename):
-    return send_from_directory(TEMP_DIR, filename)
-
-
 @app.route("/")
 def serve_index():
-    return send_file(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "index.html"))
+    return jsonify({"service": "Match Day Poster", "status": "running"})
 
 
 if __name__ == "__main__":
