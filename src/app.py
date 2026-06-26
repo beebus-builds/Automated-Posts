@@ -1,8 +1,12 @@
-import os, json, datetime, queue
+import os, json, datetime, queue, sys
 from flask import Flask, request, jsonify, send_file, send_from_directory, Response
 from flask_cors import CORS
 from dotenv import load_dotenv
 import requests
+
+# Ensure src directory is in sys.path for local imports
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+
 
 load_dotenv()
 
