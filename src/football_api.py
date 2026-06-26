@@ -23,12 +23,15 @@ def _get(path, ttl=30):
     return None
 
 
-def get_today_matches():
-    """Get all matches for today."""
-    data = _get("/matches", ttl=15)
+def get_today_matches(comp_code="WC"):
+    """Get all matches for today for a competition."""
+    data = _get(f"/competitions/{comp_code}/matches", ttl=15)
     if not data:
         return []
-    return data.get("matches", [])
+    # Filter for today's matches
+    today = datetime.utcnow().strftime("%Y-%m-%d")
+    matches = data.get("matches", [])
+    return [m for m in matches if m["utcDate"].startswith(today)]
 
 
 def get_match(match_id):
@@ -36,29 +39,29 @@ def get_match(match_id):
     return _get(f"/matches/{match_id}", ttl=10)
 
 
-def get_matches_by_date_range(date_from, date_to, status=None):
-    """Get matches in a date range, optionally filtered by status."""
+def get_matches_by_date_range(date_from, date_to, comp_code="WC"):
+    """Get matches in a date range for a competition."""
     params = f"?dateFrom={date_from}&dateTo={date_to}"
-    if status:
-        params += f"&status={status}"
-    data = _get(f"/matches{params}", ttl=30)
+    data = _get(f"/competitions/{comp_code}/matches{params}", ttl=30)
     if not data:
         return []
     return data.get("matches", [])
 
 
-def get_upcoming_matches(days=3):
+def get_upcoming_matches(days=3, comp_code="WC"):
     """Get upcoming scheduled matches for next N days."""
     today = datetime.utcnow().strftime("%Y-%m-%d")
     future = (datetime.utcnow() + timedelta(days=days)).strftime("%Y-%m-%d")
-    return get_matches_by_date_range(today, future, status="SCHEDULED")
+    all_matches = get_matches_by_date_range(today, future, comp_code)
+    return [m for m in all_matches if m.get("status") in ["SCHEDULED", "TIMED"]]
 
 
-def get_past_matches(days=3):
+def get_past_matches(days=3, comp_code="WC"):
     """Get recent finished matches from last N days."""
     today = datetime.utcnow().strftime("%Y-%m-%d")
     past = (datetime.utcnow() - timedelta(days=days)).strftime("%Y-%m-%d")
-    return get_matches_by_date_range(past, today, status="FINISHED")
+    all_matches = get_matches_by_date_range(past, today, comp_code)
+    return [m for m in all_matches if m.get("status") == "FINISHED"]
 
 
 def get_standings(competition_code="WC"):

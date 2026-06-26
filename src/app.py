@@ -77,10 +77,26 @@ def health():
     })
 
 
+# Supported competitions: {name: id}
+COMPETITIONS = {
+    "World Cup": "WC",
+    "Premier League": "PL",
+    "Champions League": "CL",
+    "La Liga": "PD",
+    "Serie A": "SA",
+    "Bundesliga": "BL1"
+}
+
+@app.route("/api/competitions")
+def api_competitions():
+    return jsonify(COMPETITIONS)
+
+
 @app.route("/api/matches")
 def api_matches():
     """Return all matches (from cache + live API)."""
-    raw = get_today_matches()
+    comp = request.args.get("comp", "WC")
+    raw = get_today_matches(comp) # Need to update this function
     matches = [match_to_summary(m) for m in raw]
     # merge in saved state for enriched events
     saved = {m["id"]: m for m in match_manager.get_all_matches()}
