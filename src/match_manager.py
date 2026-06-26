@@ -130,12 +130,24 @@ def generate_card_for_event(match, event):
     minute = event.get("minute", "")
     score = event.get("score", "")
 
-    desc = f"{home} vs {away} - {event_type.upper()}! "
-    if player:
-        desc += f"{player} {minute} - "
-    if score:
-        desc += f"Score: {score} - "
-    desc += match.get("competition", "")
+    # Create detailed caption
+    if event_type in ("goal", "own goal", "penalty"):
+        desc = f"⚽ GOAL! {player if player and player.lower() != 'unknown' else 'A goal'} scored at {minute}'. Score: {score}. "
+    elif event_type == "full-time":
+        desc = f"🏁 FULL TIME: {home} {match.get('home_score')}-{match.get('away_score')} {away}. "
+    elif event_type == "kickoff":
+        desc = f"⏱️ KICK OFF: {home} vs {away} is underway! "
+    elif event_type == "half-time":
+        desc = f"⏸️ HALF TIME: {home} {match.get('home_ht', '?')}-{match.get('away_ht', '?')} {away}. "
+    else:
+        desc = f"{home} vs {away} - {event_type.upper()}! "
+        if player: desc += f"{player} {minute} - "
+        if score: desc += f"Score: {score} - "
+
+    venue = match.get("venue")
+    if venue: desc += f"Venue: {venue}. "
+    comp = match.get("competition")
+    if comp: desc += f"{comp}."
 
     buf, img = generate_card(desc)
     return buf, img, desc

@@ -86,13 +86,17 @@ def hex_to_rgb(h):
 def fetch_flag(code, size=(160, 120)):
     if not code:
         return None
-    url = f"https://flagcdn.com/{code}.png"
+    url = f"https://flagcdn.com/w160/{code}.png"
     try:
-        r = requests.get(url, timeout=5)
+        headers = {"User-Agent": "MatchDayPoster/1.0"}
+        r = requests.get(url, headers=headers, timeout=5)
         if r.status_code == 200:
             img = Image.open(io.BytesIO(r.content)).convert("RGBA")
             return img.resize(size, Image.LANCZOS)
-    except:
+        else:
+            print(f"Flag fetch status: {r.status_code}")
+    except Exception as e:
+        print(f"Flag fetch error: {e}")
         pass
     return None
 

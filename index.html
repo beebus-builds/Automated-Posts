@@ -114,31 +114,12 @@ textarea:focus{border-color:#e63946}
 
   <div class="tabs">
     <button class="tab active" onclick="switchTab('matches')">Matches</button>
-    <button class="tab" onclick="switchTab('post')">Post</button>
     <button class="tab" onclick="switchTab('history')">History</button>
   </div>
 
   <!-- MATCHES TAB -->
   <div class="panel active" id="tab-matches">
     <div id="matchesList"><div class="skeleton"></div><div class="skeleton"></div></div>
-  </div>
-
-  <!-- POST TAB -->
-  <div class="panel" id="tab-post">
-    <div class="card">
-      <textarea id="desc" placeholder='e.g. "Portugal vs Uzbekistan – GOAL! Cristiano Ronaldo 23"''></textarea>
-      <div class="preview-area" id="preview">
-        <div class="preview-placeholder">
-          <div class="icon">+</div>
-          <p>Card preview will appear here</p>
-        </div>
-      </div>
-      <button class="btn btn-primary" id="postBtn" onclick="handlePost()">
-        <span id="btnText">Generate & Post to Facebook</span>
-        <span class="spinner" id="btnSpinner" style="display:none"></span>
-      </button>
-      <div class="status" id="status"></div>
-    </div>
   </div>
 
   <!-- HISTORY TAB -->

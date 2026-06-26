@@ -136,53 +136,10 @@ def api_events():
     })
 
 
-@app.route("/api/post", methods=["POST"])
-def post():
-    if not TOKEN or not PAGE_ID:
-        return jsonify({"error": "FB_PAGE_ACCESS_TOKEN or FB_PAGE_ID not set"}), 500
-
-    description = request.form.get("description", "").strip()
-    if not description:
-        return jsonify({"error": "No description provided"}), 400
-
-    try:
-        buf, img = generate_card(description)
-
-        card_filename = "card_latest.png"
-        img.save(os.path.join(TEMP_DIR, card_filename))
-        card_url = f"/tmp/{card_filename}"
-
-        url = f"https://graph.facebook.com/v20.0/{PAGE_ID}/photos"
-        data = {"access_token": TOKEN, "caption": description}
-        r = requests.post(url, files={"source": ("card.png", buf, "image/png")}, data=data, timeout=60)
-
-        if r.status_code == 200:
-            j = r.json()
-            post_id = j.get("post_id", j.get("id", ""))
-            pid = post_id.split("_")[-1] if "_" in post_id else post_id
-            fb_url = f"https://www.facebook.com/{PAGE_ID}/posts/{pid}"
-            entry = {
-                "post_id": post_id, "caption": description, "fb_url": fb_url,
-                "timestamp": datetime.datetime.now().isoformat(),
-            }
-            hist = load_history()
-            hist.insert(0, entry)
-            save_history(hist[:50])
-            return jsonify({"success": True, "post_id": post_id, "fb_url": fb_url, "caption": description, "card_url": card_url})
-
-        fb_err = r.json().get("error", {})
-        fb_msg = fb_err.get("message", str(r.text))
-        fb_code = fb_err.get("code", 0)
-        if fb_code == 368:
-            fb_msg = "Facebook rate limit. You can download the card below and post it manually."
-        return jsonify({"error": fb_msg, "card_url": card_url}), 400
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
-
 @app.route("/api/history")
 def history():
     return jsonify(load_history())
+
 
 
 @app.route("/api/pipeline/status")
