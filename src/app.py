@@ -30,7 +30,7 @@ if TOKEN and PAGE_ID:
 HISTORY_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "history.json")
 
 from football_api import get_today_matches, match_to_summary
-from match_manager import get_all_matches, get_match, get_match_timeline, update_match
+import match_manager
 from pipeline import PipelineThread
 
 # Start background pipeline
@@ -83,7 +83,7 @@ def api_matches():
     raw = get_today_matches()
     matches = [match_to_summary(m) for m in raw]
     # merge in saved state for enriched events
-    saved = {m["id"]: m for m in get_all_matches()}
+    saved = {m["id"]: m for m in match_manager.get_all_matches()}
     for m in matches:
         mid = m["id"]
         if mid in saved:
@@ -93,7 +93,7 @@ def api_matches():
 
 @app.route("/api/matches/<int:match_id>")
 def api_match(match_id):
-    m = get_match(match_id)
+    m = match_manager.get_match(match_id)
     if m:
         return jsonify(m)
     # fallback to raw API
@@ -106,7 +106,7 @@ def api_match(match_id):
 
 @app.route("/api/matches/<int:match_id>/timeline")
 def api_timeline(match_id):
-    return jsonify(get_match_timeline(match_id))
+    return jsonify(match_manager.get_match_timeline(match_id))
 
 
 @app.route("/api/events")

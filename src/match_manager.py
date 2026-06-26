@@ -49,6 +49,18 @@ def event_key(event):
         str(event.get("score", "") or "").strip(),
     ])
 
+def get_all_matches():
+    state = load_state()
+    return list(state.get("matches", {}).values())
+
+def get_match(match_id):
+    state = load_state()
+    return state.get("matches", {}).get(match_key(match_id))
+
+def get_match_timeline(match_id):
+    match = get_match(match_id)
+    return match.get("events", []) if match else []
+
 def update_match(raw):
     state = load_state()
     key = match_key(raw.get("id"))
