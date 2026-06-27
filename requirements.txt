@@ -6,3 +6,4 @@ Pillow
 gunicorn
 gevent
 greenlet
+feedparser

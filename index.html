@@ -227,7 +227,19 @@ function loadCurrentTab() {
         <div class="score-block">${m.home_score ?? '-'}-${m.away_score ?? '-'}</div>
         <div class="team-block" onclick="event.stopPropagation(); showTeam(${m.away_id})">${m.away_crest ? '<img src="'+m.away_crest+'">' : '<span class="crest-placeholder"></span>'}<span>${m.away_team}</span></div>
       </div>
-      <div class="timeline" id="tl-${m.id}">...expanded content...</div>`).join('');
+      <div class="timeline" id="tl-${m.id}">
+        ${m.stage || m.group ? '<div class="summary-detail">' +
+          (m.stage ? '<div class="row"><span class="label">Stage</span><span class="value">'+m.stage+'</span></div>' : '') +
+          (m.group ? '<div class="row"><span class="label">Group</span><span class="value">'+m.group+'</span></div>' : '') +
+          (m.venue ? '<div class="row"><span class="label">Venue</span><span class="value">'+m.venue+'</span></div>' : '') +
+          (m.date ? '<div class="row"><span class="label">Date</span><span class="value">'+new Date(m.date).toLocaleString()+'</span></div>' : '') +
+        '</div>' : ''}
+        ${m.events && m.events.length ? '<div style="font-size:12px;color:#888;margin-bottom:6px">EVENT TIMELINE</div>' +
+          m.events.map(e => {
+            const cls = e.type === 'goal' ? 'event-goal' : e.type === 'kickoff' ? 'event-kickoff' : e.type === 'full-time' ? 'event-full-time' : '';
+            return `<div class="event-row"><span class="event-type ${cls}">${e.type}</span><span>${e.player||''}</span><span class="event-minute">${e.minute||''}${e.score ? ' ('+e.score+')' : ''}</span></div>`;
+          }).join('') : '<div style="font-size:12px;color:#555;padding:8px 0">No events recorded yet</div>'}
+      </div>`).join('');
       showToast('Loaded');
     });
 }
