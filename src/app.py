@@ -92,6 +92,14 @@ def api_competitions():
     return jsonify(COMPETITIONS)
 
 
+@app.route("/api/standings")
+def api_standings():
+    """Return standings for the specified competition."""
+    comp = request.args.get("comp", "WC")
+    data = get_standings(comp)
+    return jsonify(data)
+
+
 @app.route("/api/matches")
 def api_matches():
     """Return all matches (from cache + live API)."""
@@ -110,14 +118,16 @@ def api_matches():
 @app.route("/api/matches/upcoming")
 def api_matches_upcoming():
     """Return upcoming scheduled matches."""
-    raw = get_upcoming_matches(days=3)
+    comp = request.args.get("comp", "WC")
+    raw = get_upcoming_matches(days=3, comp_code=comp)
     return jsonify([match_to_summary(m) for m in raw])
 
 
 @app.route("/api/matches/past")
 def api_matches_past():
     """Return past finished matches with enriched events."""
-    raw = get_past_matches(days=3)
+    comp = request.args.get("comp", "WC")
+    raw = get_past_matches(days=3, comp_code=comp)
     matches = [match_to_summary(m) for m in raw]
     saved = {m["id"]: m for m in match_manager.get_all_matches()}
     for m in matches:

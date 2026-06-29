@@ -250,10 +250,16 @@ async function loadStandings() {
     const r = await fetch(API + '/standings?comp=' + getComp());
     const data = await r.json();
     if (!data.length) { el.innerHTML = '<div class="empty-state">No standings available</div>'; return; }
-    const table = data[0].table;
-    el.innerHTML = `<table class="table"><tr><th>Team</th><th>MP</th><th>Pts</th></tr>` +
-        table.map(t => `<tr><td><img src="${t.team.crest}">${t.team.name}</td><td>${t.playedGames}</td><td>${t.points}</td></tr>`).join('') +
-        `</table>`;
+    
+    el.innerHTML = data.map(group => `
+        <div style="margin-bottom: 20px;">
+            <h3 style="margin-bottom: 10px;">${group.group || group.stage || 'Standings'}</h3>
+            <table class="table">
+                <tr><th>Team</th><th>MP</th><th>Pts</th></tr>
+                ${group.table.map(t => `<tr><td><img src="${t.team.crest}">${t.team.name}</td><td>${t.playedGames}</td><td>${t.points}</td></tr>`).join('')}
+            </table>
+        </div>
+    `).join('');
 }
 
 function expandMatch(id) { document.getElementById('tl-' + id)?.classList.toggle('expanded'); }
