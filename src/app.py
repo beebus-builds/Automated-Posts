@@ -80,12 +80,7 @@ def health():
 
 # Supported competitions: {name: id}
 COMPETITIONS = {
-    "World Cup": "WC",
-    "Premier League": "PL",
-    "Champions League": "CL",
-    "La Liga": "PD",
-    "Serie A": "SA",
-    "Bundesliga": "BL1"
+    "Football (General)": "1"
 }
 
 @app.route("/api/competitions")
