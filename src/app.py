@@ -31,6 +31,7 @@ HISTORY_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "h
 
 from football_api import get_today_matches, get_upcoming_matches, get_past_matches, match_to_summary, get_standings
 import match_manager
+import predictions_manager
 from pipeline import PipelineThread
 
 # Start background pipeline
@@ -215,7 +216,30 @@ def pipeline_status():
         "last_check": pipeline.last_check,
         "total_posted": len(pipeline.results),
         "recent": pipeline.results[-5:] if pipeline.results else [],
+        "config": {
+            "fb_enabled": os.environ.get("FB_PIPELINE_ENABLED", "0") == "1",
+            "poll_interval": os.environ.get("POLL_INTERVAL", "15")
+        }
     })
+
+@app.route("/api/predictions", methods=["GET", "POST"])
+def api_predictions():
+    user_id = request.args.get("user_id")
+    if not user_id:
+        return jsonify({"error": "user_id is required"}), 400
+    
+    if request.method == "POST":
+        data = request.json
+        match_id = data.get("match_id")
+        home_score = data.get("home_score")
+        away_score = data.get("away_score")
+        if None in (match_id, home_score, away_score):
+            return jsonify({"error": "Missing match_id or scores"}), 400
+        
+        res = predictions_manager.save_prediction(user_id, match_id, home_score, away_score)
+        return jsonify(res)
+    
+    return jsonify(predictions_manager.get_user_predictions(user_id))
 
 
 @app.route("/api/pipeline/toggle", methods=["POST"])

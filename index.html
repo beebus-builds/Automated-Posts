@@ -93,6 +93,7 @@ body { font-family: 'Inter', system-ui, -apple-system, sans-serif; background: v
   <div class="tabs">
     <button class="tab active" onclick="switchTab('matches')">Matches</button>
     <button class="tab" onclick="switchTab('standings')">Standings</button>
+    <button class="tab" onclick="switchTab('predictions')">Predictions</button>
     <button class="tab" onclick="switchTab('team')">Team</button>
     <button class="tab" onclick="switchTab('news')">News</button>
     <button class="tab" onclick="switchTab('history')">History</button>
@@ -112,6 +113,9 @@ body { font-family: 'Inter', system-ui, -apple-system, sans-serif; background: v
   </div>
   <div class="panel" id="tab-standings">
     <div class="card" id="standingsList"><div class="skeleton"></div></div>
+  </div>
+  <div class="panel" id="tab-predictions">
+    <div class="card" id="predictionsList"><div class="skeleton"></div></div>
   </div>
   <div class="panel" id="tab-team">
     <div class="card" id="teamDetails">Select a team from matches to view details...</div>
@@ -135,11 +139,12 @@ async function init() {
     sel.innerHTML = Object.entries(comps).map(([name, code]) => `<option value="${code}">${name}</option>`).join('');
     loadCurrentTab();
     loadStandings();
+    loadPredictions();
     loadNews();
     loadHistory();
 }
 
-function onCompChange() { loadCurrentTab(); loadStandings(); }
+function onCompChange() { loadCurrentTab(); loadStandings(); loadPredictions(); }
 function getComp() { return document.getElementById('compSelect').value; }
 
 function switchTab(name) {
@@ -192,6 +197,54 @@ async function loadNews() {
     } catch { el.innerHTML = '<div class="empty-state">Could not load news</div>'; }
 }
 
+async function loadPredictions() {
+    const el = document.getElementById('predictionsList');
+    let userId = localStorage.getItem('user_id');
+    if (!userId) { userId = 'u_' + Math.random().toString(36).substr(2, 9); localStorage.setItem('user_id', userId); }
+    
+    el.innerHTML = '<div class="skeleton"></div>';
+    try {
+        const matchesR = await fetch(API + '/matches/upcoming?comp=' + getComp());
+        const matches = await matchesR.json();
+        const predsR = await fetch(`${API}/predictions?user_id=${userId}`);
+        const userPreds = await predsR.json();
+        
+        if (!matches.length) { el.innerHTML = '<div class="empty-state">No upcoming matches to predict!</div>'; return; }
+        
+        el.innerHTML = matches.map(m => {
+            const p = userPreds[m.id] || { home_score: '', away_score: '' };
+            return `
+                <div class="match-item" style="flex-direction:column; align-items:stretch; gap:10px">
+                    <div style="display:flex; justify-content:space-between; align-items:center">
+                        <div class="team-block">${m.home_team}</div>
+                        <div style="display:flex; gap:5px">
+                            <input type="number" value="${p.home_score}" onchange="savePred(${m.id}, this, 'home')" style="width:40px; text-align:center; background:var(--surface); color:white; border:1px solid var(--glass-border); border-radius:4px">
+                            <span style="align-self:center">-</span>
+                            <input type="number" value="${p.away_score}" onchange="savePred(${m.id}, this, 'away')" style="width:40px; text-align:center; background:var(--surface); color:white; border:1px solid var(--glass-border); border-radius:4px">
+                        </div>
+                        <div class="team-block" style="flex-direction:row-reverse">${m.away_team}</div>
+                    </div>
+                    <div style="font-size:10px; color:#666; text-align:center">Predict the score for this match</div>
+                </div>
+            `;
+        }).join('');
+    } catch { el.innerHTML = '<div class="empty-state">Could not load predictions</div>'; }
+}
+
+async function savePred(matchId, input, side) {
+    const userId = localStorage.getItem('user_id');
+    const row = input.parentElement;
+    const home = row.querySelectorAll('input')[0].value;
+    const away = row.querySelectorAll('input')[1].value;
+    
+    await fetch(`${API}/predictions?user_id=${userId}`, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ match_id: matchId, home_score: home, away_score: away })
+    });
+    showToast('Prediction saved!');
+}
+
 function switchSubTab(name, btn) {
   currentSubTab = name;
   document.querySelectorAll('.sub-tab').forEach(t => t.classList.remove('active'));
@@ -211,8 +264,12 @@ function loadCurrentTab() {
   const filter = document.getElementById('search').value.toLowerCase();
   el.innerHTML = '<div class="skeleton"></div><div class="skeleton"></div>';
   fetch(getEndpoint())
-    .then(r => r.json())
+    .then(r => {
+        if (!r.ok) throw new Error('Server error: ' + r.status);
+        return r.json();
+    })
     .then(matches => {
+      if (!Array.isArray(matches)) throw new Error('Invalid data format');
       matches = matches.filter(m => m.home_team.toLowerCase().includes(filter) || m.away_team.toLowerCase().includes(filter));
       const order = { 'LIVE': 0, 'IN_PLAY': 0, 'PAUSED': 0, 'FINISHED': 1, 'SCHEDULED': 2, 'TIMED': 2 };
       matches.sort((a, b) => (order[a.status] || 9) - (order[b.status] || 9));
@@ -241,6 +298,10 @@ function loadCurrentTab() {
           }).join('') : '<div style="font-size:12px;color:#555;padding:8px 0">No events recorded yet</div>'}
       </div>`).join('');
       showToast('Loaded');
+    })
+    .catch(err => {
+        console.error(err);
+        el.innerHTML = `<div class="empty-state">Error loading matches: ${err.message}</div>`;
     });
 }
 
