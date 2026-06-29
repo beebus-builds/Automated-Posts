@@ -54,3 +54,7 @@ def match_to_summary(m):
         "away_score": m.get("awayScore", {}).get("current"),
         "date": m.get("startTimestamp", ""),
     }
+
+
+def get_standings(competition_code="1"):
+    return []
