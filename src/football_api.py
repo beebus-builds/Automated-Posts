@@ -1,5 +1,5 @@
 import os, requests
-from datetime import datetime
+from datetime import datetime, timedelta
 from cache import cache
 
 # API Configuration for SportAPI
@@ -28,23 +28,32 @@ def _get(path, ttl=30):
     return None
 
 def get_today_matches(comp_code="1"):
-    today = datetime.utcnow().strftime("%Y-%m-%d")
-    # Endpoint: /category/{cat_id}/scheduled-events/{date}
-    data = _get(f"/category/{comp_code}/scheduled-events/{today}")
-    return data.get("events", []) if data else []
+    return get_upcoming_matches(days=0, comp_code=comp_code)
 
 def get_upcoming_matches(days=3, comp_code="1"):
-    today = datetime.utcnow().strftime("%Y-%m-%d")
-    data = _get(f"/category/{comp_code}/scheduled-events/{today}")
-    return data.get("events", []) if data else []
+    """Fetches upcoming events by looping through the requested days."""
+    all_events = []
+    for i in range(days + 1):
+        date_str = (datetime.utcnow() + timedelta(days=i)).strftime("%Y-%m-%d")
+        data = _get(f"/category/{comp_code}/scheduled-events/{date_str}")
+        if data and "events" in data:
+            all_events.extend(data["events"])
+    return all_events
 
 def get_past_matches(days=3, comp_code="1"):
-    today = datetime.utcnow().strftime("%Y-%m-%d")
-    data = _get(f"/category/{comp_code}/finished-events/{today}")
-    return data.get("events", []) if data else []
+    """Fetches finished events by looping through the requested days."""
+    all_events = []
+    for i in range(days + 1):
+        date_str = (datetime.utcnow() - timedelta(days=i)).strftime("%Y-%m-%d")
+        data = _get(f"/category/{comp_code}/finished-events/{date_str}")
+        if data and "events" in data:
+            all_events.extend(data["events"])
+    return all_events
+
+def get_standings(competition_code="1"):
+    return []
 
 def match_to_summary(m):
-    """Maps the new API structure to your frontend requirements."""
     return {
         "id": m.get("id"),
         "status": "FINISHED" if m.get("finished") else "SCHEDULED",
@@ -54,7 +63,3 @@ def match_to_summary(m):
         "away_score": m.get("awayScore", {}).get("current"),
         "date": m.get("startTimestamp", ""),
     }
-
-
-def get_standings(competition_code="1"):
-    return []
